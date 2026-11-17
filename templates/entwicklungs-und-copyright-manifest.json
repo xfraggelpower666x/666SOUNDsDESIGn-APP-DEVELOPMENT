@@ -1,0 +1,206 @@
+{
+  "format_version": "1.0.0",
+  "vorlage": "666SOUNDsDESIGn – Entwicklungs- und Copyright-Manifest",
+  "anwendungshinweis": "Pro Projekt eine Kopie ausfüllen. null bedeutet unbekannt oder noch nicht eingetragen. Leere Listen bedeuten, dass noch keine Einträge erfasst wurden. Das Manifest kann von Menschen oder einer Anwendung ausgewertet werden.",
+  "projekt": {
+    "id": null,
+    "name": null,
+    "beschreibung": null,
+    "version": null,
+    "anwendungsarten": [],
+    "system": {
+      "name": null,
+      "zugehoerigkeit": null,
+      "quellpfad_oder_url": null,
+      "revision": null
+    },
+    "status": "OFFEN",
+    "funktionen": []
+  },
+  "ziele": [],
+  "produktion": {
+    "werkzeuge_und_ki_dienste": [],
+    "dateien_und_formate": [],
+    "menschliche_beitraege": [],
+    "ki_beitraege": [],
+    "fremdbeitraege": []
+  },
+  "rechte": {
+    "urheberkennung": "FRAGGELPOWER666",
+    "dachlabel": "666SOUNDsDESIGn",
+    "rechteinhaber": null,
+    "jahr_von": null,
+    "jahr_bis": null,
+    "status": "OFFEN",
+    "copyright_muster": "© {jahr_oder_zeitraum} {rechteinhaber} / 666SOUNDsDESIGn. Alle Rechte vorbehalten. All rights reserved.",
+    "copyright_hinweis": "Für den öffentlichen Vermerk den tatsächlichen Rechteinhaber eintragen. FRAGGELPOWER666 kann als öffentliche Kennung eingetragen werden, wenn sie den Rechteinhaber bezeichnet.",
+    "geltungsbereich": "Eigene geschützte Projektbestandteile, soweit die entsprechenden Rechte bestehen und beim genannten Rechteinhaber liegen. Gesetzlich erlaubte Nutzungen und ausdrücklich eingeräumte Nutzungsrechte bleiben unberührt.",
+    "eigene_bestandteile": [],
+    "lizenz": {
+      "bezeichnung": null,
+      "datei_oder_url": null
+    },
+    "fremdrechte": [],
+    "tonaufnahme": {
+      "rechteinhaber": null,
+      "jahr_erstveroeffentlichung": null,
+      "belege": [],
+      "phonogramm_muster": "℗ {jahr_erstveroeffentlichung} {rechteinhaber_tonaufnahme}"
+    },
+    "pruefung": {
+      "belege": [],
+      "offene_fragen": []
+    }
+  },
+  "evidenz": [],
+  "entscheidungen": [],
+  "entwicklungsvorschlaege": [],
+  "auswertung": {
+    "anwendungsarten": [
+      "desktop_app",
+      "mobil_app",
+      "web_app",
+      "plugin",
+      "custom_gpt",
+      "ki_system",
+      "ki_produktion",
+      "musikproduktion",
+      "musik_ki_entwicklung",
+      "skript",
+      "api",
+      "dokumentation",
+      "sonstiges"
+    ],
+    "geraeteklassen": [
+      "pc",
+      "iphone",
+      "smartphone",
+      "tablet",
+      "server",
+      "nicht_anwendbar"
+    ],
+    "betriebssysteme": [
+      "windows",
+      "android",
+      "ios",
+      "ipados",
+      "macos",
+      "linux",
+      "nicht_anwendbar"
+    ],
+    "laufzeitplattformen": [
+      "nativ",
+      "webbrowser",
+      "chatgpt",
+      "server",
+      "nicht_anwendbar"
+    ],
+    "evidenzstatus": [
+      "OFFEN",
+      "VORGESCHLAGEN",
+      "ABGELEITET",
+      "VERIFIZIERT",
+      "PARTIAL",
+      "BLOCKIERT"
+    ],
+    "regeln": [
+      {
+        "id": "semantik",
+        "wenn": "Nutzerangaben, Projektdateien oder Beschreibungen liegen vor.",
+        "dann": "Bezeichnungen vereinheitlichen, Originalangabe erhalten und mehrere Anwendungsarten zulassen. PC und iPhone sind Geräteklassen, Windows, Android und iOS sind Betriebssysteme, ChatGPT ist eine Laufzeitplattform. Suno kann als Produktionswerkzeug erfasst werden. Aus PC allein folgt kein Windows-Support. Aus einer ChatGPT-Plattform folgt keine native iOS- oder Android-App.",
+        "ergebnis": "Projektzuordnung und Zielplattformen mit nachvollziehbarer Herkunft."
+      },
+      {
+        "id": "kausal",
+        "wenn": "Ein Ziel, eine Funktion, Lizenz oder Produktionsquelle ändert sich.",
+        "dann": "Betroffene Einträge und Abhängigkeiten ermitteln. Bei einer Plattformänderung Build, Start, Funktionsprüfung und Dokumentation des betroffenen Ziels prüfen. Bei einer Quellen- oder Lizenzänderung die betroffenen Bestandteile und Credits prüfen. Betroffene frühere Nachweise auf die neue Revision überprüfen und bis dahin wieder auf OFFEN setzen.",
+        "ergebnis": "Entscheidung mit Auslöser, Auswirkung, Änderung und nächster Prüfung."
+      },
+      {
+        "id": "evidenz",
+        "wenn": "Ein Feld oder eine Entscheidung als VERIFIZIERT eingetragen werden soll.",
+        "dann": "Eine passende Evidenz-ID für genau diese Aussage verknüpfen. Quelle, Revision oder Version, Prüfdatum und Ergebnis erfassen. Ein Build belegt die Erstellung für das geprüfte Ziel, ein Funktionstest die jeweils getestete Funktion. Widersprüche offen dokumentieren. Bei unvollständiger Beleglage OFFEN, ABGELEITET oder PARTIAL verwenden.",
+        "ergebnis": "Projekt-, Plattform- und Rechteangaben mit eigenen Nachweisen."
+      },
+      {
+        "id": "copyright",
+        "wenn": "Ein Copyright- oder Tonaufnahmevermerk soll veröffentlicht werden.",
+        "dann": "Tatsächlichen Rechteinhaber, Umfang und Jahr prüfen. Bei fehlendem Endjahr oder identischen Jahren nur das Anfangsjahr ausgeben. Bei abweichendem späteren Endjahr den Zeitraum ausgeben. Den ℗-Vermerk nur mit belegter Inhaberschaft an der konkreten Aufnahme und eingetragenem Erstveröffentlichungsjahr bilden. Bei fehlenden Pflichtangaben den betreffenden Vermerk offenlassen. Fremdlizenzen und KI-Anbieterbedingungen gesondert erfassen.",
+        "ergebnis": "Projektbezogene Vermerke mit nachvollziehbarem Geltungsbereich."
+      },
+      {
+        "id": "emergenz",
+        "wenn": "Eine belegte Kombination von Projektfunktionen, Zielplattformen oder Medien eröffnet einen neuen Anwendungsfall.",
+        "dann": "Kombination, erwarteten Nutzen, Belege und einen überprüfbaren Test als VORGESCHLAGEN erfassen. Bei Annahme als eigene Änderung planen und anhand des Tests bewerten.",
+        "ergebnis": "Weiterentwicklungsvorschlag mit überprüfbarem Nutzen."
+      }
+    ]
+  },
+  "eintragsvorlagen": {
+    "funktion": {
+      "id": null,
+      "name": null,
+      "beschreibung": null,
+      "abhaengigkeiten": [],
+      "belege": [],
+      "status": "OFFEN"
+    },
+    "ziel": {
+      "id": null,
+      "geraeteklasse": null,
+      "plattform": null,
+      "betriebssystem": null,
+      "laufzeitplattform": null,
+      "auslieferung": null,
+      "status": "OFFEN",
+      "belege": []
+    },
+    "beitrag": {
+      "bestandteil": null,
+      "beschreibung": null,
+      "urheber_oder_werkzeug": null,
+      "quelle_oder_datei": null,
+      "revision_oder_version": null,
+      "belege": [],
+      "status": "OFFEN"
+    },
+    "fremdrecht": {
+      "bestandteil": null,
+      "rechteinhaber": null,
+      "lizenz_oder_anbieterbedingungen": null,
+      "quelle_oder_url": null,
+      "erforderlicher_credit": null,
+      "belege": [],
+      "status": "OFFEN"
+    },
+    "evidenz": {
+      "id": null,
+      "aussage": null,
+      "art": null,
+      "quelle_oder_datei": null,
+      "revision_oder_version": null,
+      "pruefdatum": null,
+      "pruefumgebung": null,
+      "ergebnis": null,
+      "status": "OFFEN"
+    },
+    "entscheidung": {
+      "id": null,
+      "ausloeser": null,
+      "betroffene_eintraege": [],
+      "auswirkung": null,
+      "aenderung": null,
+      "naechste_pruefung": null,
+      "belege": [],
+      "status": "OFFEN"
+    },
+    "entwicklungsvorschlag": {
+      "id": null,
+      "kombination": [],
+      "erwarteter_nutzen": null,
+      "test": null,
+      "belege": [],
+      "status": "VORGESCHLAGEN"
+    }
+  }
+}

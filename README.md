@@ -95,6 +95,32 @@ absolute paths. If Current and checkpoint evidence disagree, preserve the old an
 inspect `.work/` recovery artifacts, and re-run `SYSTEMSTART`/audit rather than
 overwriting the pointer. A changed HEAD is explicitly marked for re-audit.
 
+## Entwicklungs- und Copyright-Manifest
+
+Kopiere die [JSON-Vorlage](templates/entwicklungs-und-copyright-manifest.json)
+bei Bedarf als `development-manifest.json` neben das `project.json` des Projekts.
+Verwende dieselbe Projekt-ID. Das Projektprofil steuert weiterhin die CLI. Das
+ergänzende Manifest dokumentiert Ziele, Beiträge, Rechte, Entscheidungen und
+Weiterentwicklung für Menschen und Coding-Hosts. Es ist unabhängig vom
+SHA-256-Manifest, das beim Freeze entsteht.
+
+- Kopiere die benötigten Eintragsmuster in die passende Liste. In `belege` stehen
+  IDs aus `evidenz`, die genau die jeweilige Aussage stützen. `pruefdatum` verwendet
+  `JJJJ-MM-TT`. Bei Zielangaben kann `plattform` die ursprüngliche Bezeichnung
+  aufnehmen. Die normalisierten Werte stehen in den Geräte-, Betriebssystem- und
+  Laufzeitfeldern.
+- Halte eine Änderung mit Auslöser, betroffenen Einträgen und nächster Prüfung in
+  `entscheidungen` fest. Eine Idee mit erwartetem Nutzen und einem konkreten Test
+  kommt zunächst als `VORGESCHLAGEN` in `entwicklungsvorschlaege`.
+- Die Felder in `rechte` und `tonaufnahme` bleiben offen, bis projektspezifische
+  Angaben belegt sind. Die Muster mit © und ℗ sind Textvorlagen. Fremdrechte und
+  Bedingungen eingesetzter KI-Dienste haben eigene Einträge.
+
+Menschen, Codex, GitHub Copilot und ChatGPT mit Repo-Zugriff können dieselbe
+JSON-Datei lesen. Die Auswertungsregeln sind als Daten und Arbeitsanweisungen
+hinterlegt. Zum Prüfen der JSON-Syntax dient
+`python -m json.tool projects/<projekt-id>/development-manifest.json`.
+
 ## Entwicklungswege
 
 666DEV läuft lokal mit Python und Git. Derselbe Entwicklungsablauf lässt sich
