@@ -12,3 +12,10 @@
   when validating changes. Record local checks separately from remote/platform checks.
 - Do not add auto-merge, deployment, or external-write behavior without an explicit
   separately reviewed requirement.
+
+## Development hosts
+
+Follow the same project profiles and evidence rules in local CLI, Codex, GitHub
+Copilot, and ChatGPT or approved plugins. See [Development hosts](docs/development-hosts.md)
+for entry points, capability checks, and portable handoffs. Shared skill bodies
+live in `.github/skills/`. Codex entry points in `.agents/skills/` refer to them.

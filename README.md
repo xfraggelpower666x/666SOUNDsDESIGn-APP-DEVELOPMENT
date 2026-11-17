@@ -95,6 +95,12 @@ absolute paths. If Current and checkpoint evidence disagree, preserve the old an
 inspect `.work/` recovery artifacts, and re-run `SYSTEMSTART`/audit rather than
 overwriting the pointer. A changed HEAD is explicitly marked for re-audit.
 
+## Entwicklungswege
+
+666DEV läuft lokal mit Python und Git. Derselbe Entwicklungsablauf lässt sich
+über Codex, GitHub Copilot oder ChatGPT mit optionalen Plugins bearbeiten.
+[Entwicklungswege und Übergabe](docs/development-hosts.md)
+
 ## Copilot für die Entwicklung verwenden
 
 Im Copilot-Kontext dieses Repositories beschreibst du dein Ziel in normaler Sprache.

@@ -8,7 +8,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from .core import (
-    ROOT, DevhubError, allowed_path, apply_candidate, checkpoint, dashboard_data, freeze_project, inspect_project,
+    ROOT, DevhubError, allowed_path, apply_candidate, checkpoint, dashboard_data, export_context, freeze_project, inspect_project,
     git, make_evidence, project_entries, project_profile, python_graph, rehydrate,
     plan_entrypoint_repairs, run_acceptance,
 )
@@ -17,6 +17,7 @@ HELP = """666DEV commands (parsed only from this direct invocation):
   666DEV HELP
   666DEV STATUS
   666DEV <PROJECT-ID> SYSTEMSTART|STATUS|WEITER|CODEFORGE|SUPERCODEFORGE|VISUAL|UPDATE|FREEZE
+  666DEV <PROJECT-ID> CONTEXT
   666DEV <PROJECT-ID> PATCH-APPLY <candidate.json>
 
 Examples:
@@ -254,6 +255,10 @@ def execute(tokens: list[str]) -> str:
     project_profile(project_id)
     if action == "STATUS":
         return render_status(project_id)
+    if action == "CONTEXT":
+        if len(normalized) != 3:
+            raise DevhubError("CONTEXT takes only a project ID.")
+        return json.dumps(export_context(project_id), indent=2)
     if action == "VISUAL":
         return "Run: python -m devhub.cli dashboard"
     if action == "FREEZE":

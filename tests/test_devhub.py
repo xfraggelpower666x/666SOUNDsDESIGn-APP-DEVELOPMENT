@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -19,6 +20,27 @@ class DevhubTests(unittest.TestCase):
         self.assertEqual(len(linked["revision"]["commit"]), 40)
         self.assertEqual(linked["revision"]["branch"], "main")
         self.assertTrue((linked["source"] / ".git").exists())
+
+    def test_context_exports_selected_project_and_git_revision(self):
+        context = json.loads(execute(["666DEV", "demo-monorepo", "CONTEXT"]))
+        head = core.git(core.ROOT, "rev-parse", "HEAD")
+        self.assertEqual("666dev-project-context", context["kind"])
+        self.assertEqual("demo-monorepo", context["project_id"])
+        self.assertEqual("projects/demo-monorepo/project.json", context["profile_path"])
+        self.assertEqual("VERIFIZIERT", context["source_revision_status"])
+        self.assertEqual(head, context["hub_commit"])
+        self.assertEqual(head, context["source_revision"]["commit"])
+        self.assertNotIn(str(core.ROOT), json.dumps(context))
+
+    def test_context_does_not_initialize_unavailable_linked_demo(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            work = Path(temporary) / ".work"
+            with patch.object(core, "WORK", work):
+                context = json.loads(execute(["666DEV", "demo-linked", "CONTEXT"]))
+            self.assertFalse(work.exists())
+        self.assertEqual("READBACK_PENDING", context["source_revision_status"])
+        self.assertIsNone(context["source_revision"])
+        self.assertTrue(context["blocker"])
 
     def test_static_graph_links_entry_build_module_and_test(self):
         state = core.rehydrate("demo-monorepo")

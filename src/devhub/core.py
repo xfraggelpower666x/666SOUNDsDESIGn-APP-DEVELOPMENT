@@ -184,7 +184,7 @@ def ensure_linked_demo() -> Path:
     return checkout.resolve()
 
 
-def resolve_source(profile: dict[str, Any]) -> Path:
+def resolve_source(profile: dict[str, Any], *, initialize_demo: bool = True) -> Path:
     mode = profile["source_mode"]
     if mode == "monorepo":
         source = (ROOT / profile["source_path"]).resolve()
@@ -194,7 +194,11 @@ def resolve_source(profile: dict[str, Any]) -> Path:
     config = read_json(WORK / "config.json") if (WORK / "config.json").exists() else {}
     configured = config.get("checkouts", {}).get(profile["id"])
     if not configured and profile["id"] == "demo-linked":
-        return ensure_linked_demo()
+        if initialize_demo:
+            return ensure_linked_demo()
+        checkout = WORK / "checkouts" / "demo-linked"
+        if (checkout / ".git").exists():
+            return checkout.resolve()
     if not configured:
         raise DevhubError("Linked checkout missing; set .work/config.json with its local path.")
     if not isinstance(configured, str):
@@ -571,6 +575,34 @@ def inspect_project(project_id: str) -> dict[str, Any]:
         "next_step": (last.get("open_work") or [{}])[0].get("step", "Run SYSTEMSTART for initial verification") if last else
                      "Run SYSTEMSTART to create the first checkpoint",
         "revision_status": current.get("revision_status", "OFFEN") if current else "OFFEN",
+    }
+
+
+def export_context(project_id: str) -> dict[str, Any]:
+    """Return a portable project context without initializing or changing a checkout."""
+    profile, _ = project_profile(project_id)
+    hub_commit = git(ROOT, "rev-parse", "--verify", "HEAD^{commit}")
+    revision = None
+    blocker = None
+    try:
+        source = resolve_source(profile, initialize_demo=False)
+        validate_profile_source(profile, source)
+        revision = resolve_revision(profile, source)
+    except DevhubError:
+        blocker = "Verify the project checkout, declared source files, repository identity, and expected ref locally."
+    return {
+        "schema_version": 1,
+        "kind": "666dev-project-context",
+        "hub_commit": hub_commit,
+        "project_id": project_id,
+        "profile_path": project_entries()[project_id],
+        "source_mode": profile["source_mode"],
+        "source_revision_status": "VERIFIZIERT" if revision else "READBACK_PENDING",
+        "source_revision": revision,
+        "blocker": blocker,
+        "entry_points": profile["entry_points"],
+        "build_contracts": profile["build_contracts"],
+        "test_paths": profile["test_paths"],
     }
 
 
