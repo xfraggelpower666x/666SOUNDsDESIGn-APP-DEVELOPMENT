@@ -19,3 +19,5 @@ Lies vor der Arbeit die für den konkreten Auftrag passenden Repository-Skills. 
 - [666dev-codeforge](../skills/666dev-codeforge/SKILL.md)
 - [666dev-livecircle](../skills/666dev-livecircle/SKILL.md)
 - [666dev-verification](../skills/666dev-verification/SKILL.md)
+
+- [666dev-migration](../skills/666dev-migration/SKILL.md)

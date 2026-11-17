@@ -108,6 +108,7 @@ Repository-Skills helfen Copilot, Kontext, Prüfschritte und Belege zu ermitteln
 | Auswirkungen einer Änderung auf Module, Builds und Tests verfolgen | [SuperCodeForge](.github/agents/supercodeforge.agent.md) |
 | Einen unterbrochenen Auftrag wieder aufnehmen | [Livecircle](.github/skills/666dev-livecircle/SKILL.md) |
 | Dashboard, Belegansicht oder Abnahme bearbeiten | [Visual](.github/skills/666dev-visual/SKILL.md) · [Verification](.github/skills/666dev-verification/SKILL.md) |
+| Technische Optionen vergleichen oder eine bestehende Anwendung portieren | [Recherche](.github/skills/666dev-technical-research/SKILL.md) · [Migration](.github/skills/666dev-migration/SKILL.md) |
 
 Die Skills liegen im Repository unter `.github/skills/`. Die bestehenden
 CLI-Trigger sind in **Project lifecycle** dokumentiert.

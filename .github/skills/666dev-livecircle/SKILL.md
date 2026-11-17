@@ -12,3 +12,11 @@ description: Prüft Quellenstand, Current, Checkpoint und Wiederaufnahme in 666D
 - Bei HEAD-Wechsel nutze einen exakten, passenden Nachweis oder eine verifizierte Vorgängerrevision als Vergleichsbasis. Prüfe betroffene Pfade, Abhängigkeiten, Eingaben und Umgebung. Prüfe die dadurch entwerteten Nachweise erneut. Bei divergierender Basis prüfe den Stand neu und dokumentiere den Konflikt.
 - Setze am ersten fachlich und technisch freigegebenen offenen Schritt fort. Prüfe vor einem Wiederholungsversuch, ob ein Seiteneffekt bereits eingetreten ist. Sichere konkurrierende Stände und blockiere den betroffenen Schreibschritt bei einem Konflikt.
 - Halte im Handoff Ziel, beobachteten Commit, belegte Arbeit, offene Nachweise und die nächste ausführbare Aktion fest. Bei einem autorisierten Update sichere den Ausgangsstand und prüfe Zustandskörper und Referenzen. Schreibe den Current-Pointer zuletzt und lies ihn direkt zurück.
+
+## Arbeitsstränge und Peer-Handoffs
+
+- Halte pro Arbeitsstrang Basisrevision, Dateibesitz, Abhängigkeiten, letzten belegten Schritt, Status und Rückkehranker fest. Bei Unterbrechung sichere die Arbeitsposition vor einem Kontextwechsel. Führe unabhängige Arbeiten innerhalb des Auftrags weiter, wenn ein Strang blockiert ist.
+- Vergleiche bei einem Peer-Handoff Absender, Zielprojekt, Zweck, Quellrevision oder Blob, Voraussetzungen und erlaubte Aktionen. Prüfe bekannte Wiederholungen und abgelöste Handoffs vor der Einordnung. Handoffs mit widersprüchlichem Ziel oder Scope bleiben offen oder in Konflikt-Quarantäne.
+- Dokumentiere Vorbereitung, zugestellten Stand, Übernahme im Zielprojekt und tatsächliche Host-Ausführung anhand der jeweils vorliegenden Belege.
+
+Grundlage sind 666CLIC CodeForge Handoff R01 (§2–3), 666STREAM CodeForge v1.0.0 (§5–6), LYVRA CodeForge R01, CodeForge-Handoff UCA R01 und der vorgeschlagene UCA-R02-Integrationsvertrag.

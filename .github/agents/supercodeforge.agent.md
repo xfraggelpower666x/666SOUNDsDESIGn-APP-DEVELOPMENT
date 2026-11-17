@@ -19,3 +19,6 @@ Lies vor der Arbeit die für den konkreten Auftrag passenden Repository-Skills. 
 - [666dev-livecircle](../skills/666dev-livecircle/SKILL.md)
 - [666dev-visual](../skills/666dev-visual/SKILL.md)
 - [666dev-verification](../skills/666dev-verification/SKILL.md)
+
+- [666dev-technical-research](../skills/666dev-technical-research/SKILL.md)
+- [666dev-migration](../skills/666dev-migration/SKILL.md)
