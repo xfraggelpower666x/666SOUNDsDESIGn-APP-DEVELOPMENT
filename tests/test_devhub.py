@@ -5,7 +5,7 @@ from pathlib import Path
 import shutil
 from unittest.mock import patch
 
-from devhub import core
+from devhub import cli, core
 from devhub.cli import execute
 from devhub.core import DevhubError
 from devhub.providers import LocalGitProvider
@@ -110,8 +110,80 @@ class DevhubTests(unittest.TestCase):
 
             with patch.object(core, "atomic_json", side_effect=concurrent_write):
                 with self.assertRaisesRegex(DevhubError, "CONFLICT_QUARANTINE"):
-                    core.checkpoint(profile, project, "a" * 40, "test", [], [], [])
+                    core.checkpoint(profile, project, "a" * 40, "test", [], [], [],
+                                    observed={"current": None, "working": None})
             self.assertEqual(core.read_json(core.current_file(project)), external_pointer)
+
+    def test_livecircle_reaudits_changed_head_and_only_update_publishes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            shutil.copytree(core.ROOT / "registry", root / "registry")
+            shutil.copytree(core.ROOT / "projects" / "demo-monorepo",
+                            root / "projects" / "demo-monorepo", ignore=shutil.ignore_patterns("__pycache__", "state"))
+            core.git(root, "init", "-q")
+            core.git(root, "config", "user.email", "test@example.invalid")
+            core.git(root, "config", "user.name", "666DEV test")
+            core.git(root, "add", ".")
+            core.git(root, "commit", "-qm", "Original demo")
+            with patch.multiple(core, ROOT=root, REGISTRY=root / "registry" / "projects.json",
+                                WORK=root / ".work"), patch.object(cli, "ROOT", root):
+                def action(name):
+                    return json.loads(execute(["666DEV", "demo-monorepo", name]))
+
+                original = action("SYSTEMSTART")
+                profile, project_dir = core.project_profile("demo-monorepo")
+                self.assertFalse(core.current_file(project_dir).exists())
+                action("WEITER")
+                action("WEITER")
+                first = action("UPDATE")
+                self.assertEqual(original["observed_head"], first["observed_head"])
+                pointer_before = core.current_file(project_dir).read_bytes()
+                build = action("BUILD")
+                self.assertTrue(any(item["evidence_type"] == "build" and item["status"] == "VERIFIZIERT"
+                                    for item in build["results"]))
+
+                source = root / profile["source_path"]
+                entry = source / profile["entry_points"][0]
+                entry.write_text(entry.read_text(encoding="utf-8") + "\n# Revision test\n", encoding="utf-8")
+                core.git(root, "add", str(entry))
+                core.git(root, "commit", "-qm", "Changed project source")
+                with self.assertRaisesRegex(DevhubError, "before UPDATE"):
+                    action("UPDATE")
+                resumed = action("WEITER")
+                self.assertNotEqual(original["observed_head"], resumed["observed_head"])
+                self.assertEqual({resumed["observed_head"]}, {item["commit"] for item in resumed["results"]})
+                self.assertEqual(pointer_before, core.current_file(project_dir).read_bytes())
+                action("WEITER")
+                entry.write_text(entry.read_text(encoding="utf-8") + "\n# Uncommitted\n", encoding="utf-8")
+                with self.assertRaisesRegex(DevhubError, "commit or isolate"):
+                    action("UPDATE")
+                core.git(root, "restore", str(entry))
+                action("UPDATE")
+                self.assertNotEqual(pointer_before, core.current_file(project_dir).read_bytes())
+
+                local = source / "untracked-local.txt"
+                local.write_text("local only", encoding="utf-8")
+                receipt = action("FREEZE")
+                self.assertNotIn(local.name, receipt["manifest_sha256"])
+                self.assertEqual("VERIFIZIERT", receipt["start_checks"][0]["status"])
+                self.assertIn("monorepo demo ready", receipt["start_checks"][0]["observed"])
+
+    def test_manifest_evidence_aliases_are_read_without_promotion(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "manifest.json"
+            path.write_text(json.dumps({
+                "format_version": "1.5.0", "projekt": {"id": "demo-monorepo"},
+                "evidenz": [{"id": "e1", "typ": "test", "datum": "2026-11-17", "status": "VERIFIZIERT"}],
+                "impressum": {},
+            }), encoding="utf-8")
+            report = json.loads(execute(["666DEV", "demo-monorepo", "MANIFEST", str(path)]))
+            self.assertEqual("VERIFIZIERT", report["structure_status"])
+            self.assertEqual(["impressum"], report["additional_sections"])
+            self.assertEqual("test", report["evidenz"][0]["art"])
+            self.assertEqual("2026-11-17", report["evidenz"][0]["pruefdatum"])
+            self.assertEqual("OFFEN", report["evidenz"][0]["status"])
+            with self.assertRaisesRegex(DevhubError, "does not match"):
+                execute(["666DEV", "demo-linked", "MANIFEST", str(path)])
 
     def test_acceptance_and_read_only_git_provider(self):
         state = core.rehydrate("demo-monorepo")

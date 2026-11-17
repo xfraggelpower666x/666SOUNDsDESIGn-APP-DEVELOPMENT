@@ -1,16 +1,13 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
-import subprocess
-import sys
-from pathlib import Path
 from pathlib import PureWindowsPath
 
+from .providers import git_bytes
+
 from .core import (
-    ROOT, DevhubError, ID_RE, checkpoint_file, project_entries, project_profile,
-    read_json,
+    ROOT, STATUSES, DevhubError, ID_RE, git, load_current, project_entries, project_profile,
 )
 
 
@@ -18,6 +15,7 @@ def verify(base: str | None = None) -> dict:
     errors: list[str] = []
     checked = 0
     changed_files: list[str] = []
+    resolved_base = None
     try:
         entries = project_entries()
         for project_id, profile_ref in entries.items():
@@ -50,62 +48,45 @@ def verify(base: str | None = None) -> dict:
                             errors.append(f"{project_id}: Windows absolute writable path {writable}")
                         elif not (source / writable).resolve().is_relative_to(source):
                             errors.append(f"{project_id}: writable path escapes source")
-                state = project_dir / "state"
-                current_path = state / "current.json"
-                if current_path.exists():
-                    current = read_json(current_path)
-                    checkpoint_path = checkpoint_file(project_dir, current["checkpoint_id"])
-                    checkpoint = read_json(checkpoint_path)
-                    digest = hashlib.sha256(checkpoint_path.read_bytes()).hexdigest()
-                    if current.get("sha256") != digest:
-                        errors.append(f"{project_id}: checkpoint hash mismatch")
-                    if (checkpoint.get("project_id") != project_id
-                            or checkpoint.get("observed_head") != current.get("commit")):
-                        errors.append(f"{project_id}: checkpoint project mismatch")
-                    if not checkpoint.get("results"):
-                        errors.append(f"{project_id}: checkpoint has no evidence")
-                    for result in checkpoint.get("results", []):
-                        if result.get("status") not in {
-                            "VERIFIZIERT", "ABGELEITET", "VORGESCHLAGEN", "OFFEN", "BLOCKIERT",
-                            "PARTIAL", "WRITE_BLOCKED", "READBACK_PENDING", "CONFLICT_QUARANTINE",
-                        }:
-                            errors.append(f"{project_id}: invalid evidence status {result.get('status')}")
-                        if not all(result.get(field) for field in
-                                   ("evidence_type", "source", "commit", "environment", "observed")):
+                for working in (False, True):
+                    state = load_current(profile, project_dir, working=working)
+                    if state is None:
+                        continue
+                    for result in state["checkpoint"]["results"]:
+                        if not isinstance(result, dict) or result.get("status") not in STATUSES:
+                            errors.append(f"{project_id}: invalid evidence status")
+                        elif not all(result.get(field) for field in
+                                     ("evidence_type", "source", "commit", "environment", "observed")):
                             errors.append(f"{project_id}: incomplete evidence record")
+                manifest = project_dir / "development-manifest.json"
+                if manifest.exists():
+                    from .manifests import inspect_manifest
+                    if not manifest.resolve().is_relative_to(project_dir):
+                        raise DevhubError("Manifest path escapes the project directory.")
+                    inspect_manifest(project_id, manifest)
             except (DevhubError, KeyError, TypeError) as exc:
                 errors.append(f"{project_id}: {exc}")
         if base:
-            if base != "HEAD" and subprocess.run(
-                ["git", "-C", str(ROOT), "rev-parse", "--verify", f"{base}^{{commit}}"],
-                capture_output=True,
-            ).returncode:
-                errors.append(f"Diff base cannot be resolved: {base}")
-            else:
-                diff = subprocess.run(
-                    ["git", "-C", str(ROOT), "diff", "--name-only", base],
-                    capture_output=True, text=True,
+            try:
+                resolved_base = git(ROOT, "rev-parse", "--verify", "--end-of-options", f"{base}^{{commit}}")
+                inventories = (
+                    git_bytes(ROOT, "diff", "--name-only", "-z", resolved_base, "--"),
+                    git_bytes(ROOT, "diff", "--cached", "--name-only", "-z", "--"),
+                    git_bytes(ROOT, "diff", "--name-only", "-z", "--"),
+                    git_bytes(ROOT, "ls-files", "--others", "--exclude-standard", "-z"),
                 )
-                if diff.returncode:
-                    errors.append(f"Scope diff failed for base {base}")
-                else:
-                    changed = set(diff.stdout.splitlines())
-                    untracked = subprocess.run(
-                        ["git", "-C", str(ROOT), "ls-files", "--others", "--exclude-standard"],
-                        capture_output=True, text=True,
-                    )
-                    if untracked.returncode:
-                        errors.append("Untracked-file scope check failed")
-                    changed.update(untracked.stdout.splitlines())
-                    for name in changed:
-                        if name.startswith(".work/"):
-                            errors.append(f"Scope diff includes ignored work area: {name}")
-                    changed_files = sorted(changed)
+                changed_files = sorted({name.decode("utf-8", errors="surrogateescape")
+                                        for inventory in inventories for name in inventory.split(b"\0") if name})
+                for name in changed_files:
+                    if name.startswith(".work/"):
+                        errors.append(f"Scope diff includes ignored work area: {name}")
+            except DevhubError as exc:
+                errors.append(f"Diff base or scope could not be verified: {exc}")
         return {
             "status": ("BLOCKIERT" if errors else "VERIFIZIERT" if base else "PARTIAL"),
-            "diff_base": base or "UNSPECIFIED (working tree only)",
+            "diff_base": resolved_base or base or "UNSPECIFIED (working tree only)",
             "projects_checked": checked,
-            "required_sources": {"registry": "VERIFIZIERT", "diff_base": "VERIFIZIERT" if base else "PARTIAL"},
+            "required_sources": {"registry": "VERIFIZIERT", "diff_base": "VERIFIZIERT" if resolved_base else "PARTIAL"},
             "changed_files": changed_files,
             "errors": errors,
             "skipped": [] if base else ["Commit-to-HEAD diff comparison: no base supplied"],

@@ -8,16 +8,17 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from .core import (
-    ROOT, DevhubError, allowed_path, apply_candidate, checkpoint, dashboard_data, export_context, freeze_project, inspect_project,
+    ROOT, DevhubError, allowed_path, apply_candidate, checkpoint, clean_source, dashboard_data, export_context, freeze_project, freeze_start_checks, inspect_project,
     git, make_evidence, project_entries, project_profile, python_graph, rehydrate,
-    plan_entrypoint_repairs, run_acceptance,
+    plan_entrypoint_repairs, run_acceptance, run_committed_build, state_file,
 )
 
 HELP = """666DEV commands (parsed only from this direct invocation):
   666DEV HELP
   666DEV STATUS
   666DEV <PROJECT-ID> SYSTEMSTART|STATUS|WEITER|CODEFORGE|SUPERCODEFORGE|VISUAL|UPDATE|FREEZE
-  666DEV <PROJECT-ID> CONTEXT
+  666DEV <PROJECT-ID> CONTEXT|BUILD
+  666DEV <PROJECT-ID> MANIFEST [manifest.json|cards.zip]
   666DEV <PROJECT-ID> PATCH-APPLY <candidate.json>
 
 Examples:
@@ -30,12 +31,21 @@ def _checkpoint_action(project_id: str, action: str) -> dict:
     state = rehydrate(project_id)
     profile, project_dir = state["profile"], state["project_dir"]
     commit = state["revision"]["commit"]
-    evidence = list(state["current"]["checkpoint"]["results"]) if state["current"] else []
-    open_work = list(state["current"]["checkpoint"]["open_work"]) if state["current"] else []
+    previous = state["working"]["checkpoint"] if state["working"] else None
+    stale = previous is not None and previous["observed_head"] != commit
+    evidence = [item for item in previous["results"] if item.get("commit") == commit] if previous else []
+    open_work = list(previous["open_work"]) if previous and not stale else []
+    if stale:
+        evidence.append(make_evidence("revision-change", "Git HEAD", commit, "local",
+                                      "Earlier evidence is retained in the previous checkpoint; re-audit required.",
+                                      "ABGELEITET"))
+        if action == "WEITER":
+            action = "CODEFORGE"
     if action == "SYSTEMSTART":
         evidence.append(make_evidence("git", str(state["source"]), commit, "local",
                                       f"Ref {state['revision']['expected_ref']} resolved to HEAD"))
-        open_work = [{"step": "Run CodeForge analysis", "status": "OFFEN", "depends_on": []}]
+        if previous is None or stale:
+            open_work = [{"step": "Run CodeForge analysis", "status": "OFFEN", "depends_on": []}]
         label = "Rehydration and project source verified"
     elif action in {"CODEFORGE", "SUPERCODEFORGE"}:
         graph = python_graph(state["source"], profile, commit)
@@ -63,7 +73,7 @@ def _checkpoint_action(project_id: str, action: str) -> dict:
             "schema_version": 1, "project_id": project_id,
             "candidate_id": f"{action.lower()}-{commit[:12]}-{uuid.uuid4().hex[:8]}",
             "base_commit": commit,
-            "recovery_anchor": state["current"]["pointer"]["checkpoint_id"] if state["current"] else None,
+            "recovery_anchor": state["working"]["pointer"]["checkpoint_id"] if state["working"] else None,
             "scope": list(profile["writable_paths"]),
             "patches": plan_entrypoint_repairs(profile, state["source"]),
             "status": "VORGESCHLAGEN",
@@ -71,11 +81,11 @@ def _checkpoint_action(project_id: str, action: str) -> dict:
                 "status": "ABGELEITET",
                 "finding": ("; ".join(graph["diagnostics"]) if graph["diagnostics"] else
                             "The declared console entry point resolves to the tracked Python module."),
-                "source": profile.get("build_contracts", ["project.json"])[0],
+                "source": (profile.get("build_contracts") or ["project.json"])[0],
                 "related_test": profile.get("test_paths", []),
             }],
         }
-        candidate_path = project_dir / "state" / "patch-candidates" / f"{candidate['candidate_id']}.json"
+        candidate_path = state_file(project_dir, "patch-candidates", f"{candidate['candidate_id']}.json")
         from .core import atomic_json
         atomic_json(candidate_path, candidate)
         evidence.append(make_evidence(
@@ -95,35 +105,29 @@ def _checkpoint_action(project_id: str, action: str) -> dict:
         if next_step["step"] == "Review candidate and run acceptance tests":
             from .core import read_json
             candidate_path = (project_dir / next_step["candidate"]).resolve() if next_step.get("candidate") else None
-            if candidate_path and not candidate_path.is_relative_to(project_dir.resolve()):
-                raise DevhubError("WRITE_BLOCKED: candidate reference escapes project state.")
-            if candidate_path and candidate_path.is_file():
-                candidate = read_json(candidate_path)
-            else:
-                candidate_paths = sorted((project_dir / "state" / "patch-candidates").glob("*.json"))
-                candidates = [read_json(path) for path in candidate_paths]
-                candidates = [item for item in candidates
-                              if item.get("project_id") == project_id and item.get("base_commit") == commit]
-                candidate = candidates[-1] if candidates else {}
+            if not candidate_path or not candidate_path.is_relative_to(state_file(project_dir, "patch-candidates")):
+                raise DevhubError("WRITE_BLOCKED: checkpoint does not reference a project candidate.")
+            candidate = read_json(candidate_path)
+            if (candidate.get("project_id") != project_id or candidate.get("base_commit") != commit):
+                raise DevhubError("CONFLICT_QUARANTINE: candidate no longer matches the project and HEAD.")
             if candidate.get("patches"):
-                if candidate_path is None:
-                    candidate_path = project_dir / "state" / "patch-candidates" / f"{candidate['candidate_id']}.json"
                 raise DevhubError(
                     f"VORGESCHLAGEN: review and explicitly apply {candidate_path.relative_to(project_dir)} first."
                 )
             checks = run_acceptance(profile, state["source"], commit)
             evidence.extend(checks)
-            passed = all(item["status"] == "VERIFIZIERT" for item in checks)
+            diagnostics = python_graph(state["source"], profile, commit)["diagnostics"]
+            passed = all(item["status"] == "VERIFIZIERT" for item in checks) and not diagnostics
             open_work = [] if passed else [{"step": "Resolve failed acceptance checks",
                                             "status": "BLOCKIERT", "depends_on": ["tests"]}]
             evidence.append(make_evidence(
                 "re-audit", "666DEV WEITER", commit, "local",
-                "Acceptance checks passed." if passed else "Acceptance checks failed; inspect preceding test evidence.",
+                "Acceptance checks passed." if passed else "; ".join(diagnostics) or "Acceptance checks failed.",
                 "VERIFIZIERT" if passed else "BLOCKIERT",
             ))
             label = "Re-audit completed" if passed else "Re-audit blocked"
             return checkpoint(profile, project_dir, commit, label, evidence, open_work,
-                              list(profile["writable_paths"]))
+                              list(profile["writable_paths"]), observed=state)
         if next_step["step"] == "Run re-audit in isolated worktree":
             worktree = Path(next_step["worktree"]).resolve()
             permitted_worktrees = (ROOT / ".work" / "worktrees" / project_id).resolve()
@@ -153,41 +157,82 @@ def _checkpoint_action(project_id: str, action: str) -> dict:
             return checkpoint(profile, project_dir, commit,
                               "Isolated patch re-audit completed" if passed else "Isolated re-audit blocked",
                               evidence, open_work, list(profile["writable_paths"]),
-                              next_step.get("affected_files", []))
-        evidence.append(make_evidence(
-            "workflow-step", next_step["step"], commit, "local",
-            "Resolved as an explicit read-only next action.", "ABGELEITET",
-        ))
-        label = f"Resolved next action: {next_step['step']}"
+                              next_step.get("affected_files", []), observed=state)
+        raise DevhubError("Unknown checkpoint step; run CODEFORGE to create a new audit.")
+    elif action == "BUILD":
+        evidence.extend(run_committed_build(profile, state["source"], commit))
+        label = "Build commands executed; inspect build evidence"
     elif action == "UPDATE":
+        if previous is None or stale or open_work:
+            raise DevhubError("BLOCKIERT: complete the audit and re-audit at the current HEAD before UPDATE.")
+        if previous.get("affected_files"):
+            raise DevhubError("BLOCKIERT: integrate the isolated candidate into the source revision and re-audit it before UPDATE.")
+        if not clean_source(state["source"]):
+            raise DevhubError("WRITE_BLOCKED: commit or isolate source changes before publishing Current.")
+        checks = run_acceptance(profile, state["source"], commit)
+        if profile.get("build_commands"):
+            checks.extend(run_committed_build(profile, state["source"], commit))
+        diagnostics = python_graph(state["source"], profile, commit)["diagnostics"]
+        if diagnostics or any(item["status"] != "VERIFIZIERT" for item in checks):
+            raise DevhubError("BLOCKIERT: current checkout failed acceptance; run CODEFORGE for details.")
+        evidence.extend(checks)
         evidence.append(make_evidence(
-            "current-update", "666DEV UPDATE", commit, "local",
-            "Git HEAD and project scope verified; pointer updated last.",
+            "current-acceptance", "666DEV UPDATE", commit, "local",
+            "Source checkout passed fresh tests, configured builds, and static build-contract checks.",
         ))
         label = "Explicit Current update"
     else:
         raise DevhubError(f"Unsupported action: {action}")
     return checkpoint(profile, project_dir, commit, label, evidence, open_work,
-                      list(profile["writable_paths"]))
+                      list(profile["writable_paths"]), observed=state, publish=action == "UPDATE")
 
 
 def render_status(project_id: str | None = None) -> str:
     ids = [project_id] if project_id else sorted(project_entries())
-    return "\n".join(
-        f"{item['id']}: {item['name']} | {item['source_mode']} | {item['revision_status']} | "
-        f"{item['commit'][:12]} | next: {item['next_step']}"
-        for item in (inspect_project(selected) for selected in ids)
-    )
+    lines = []
+    for selected in ids:
+        try:
+            item = inspect_project(selected)
+        except DevhubError as exc:
+            lines.append(f"{selected}: OFFEN | {exc}")
+            continue
+        lines.append(f"{item['id']}: {item['name']} | {item['source_mode']} | {item['revision_status']} | "
+                     f"HEAD {item['commit'][:12]} | Current {(item['current_commit'] or 'OFFEN')[:12]} | "
+                     f"next: {item['next_step']}")
+    return "\n".join(lines)
 
 
 def serve_dashboard() -> None:
-    from .core import atomic_json
-    dashboard = ROOT / "web"
-    atomic_json(dashboard / "dashboard.json", dashboard_data())
+    from urllib.parse import urlsplit
 
     class LocalOnlyHandler(SimpleHTTPRequestHandler):
         def __init__(self, *args, **kwargs):
-            super().__init__(*args, directory=str(dashboard), **kwargs)
+            super().__init__(*args, directory=str(ROOT / "web"), **kwargs)
+
+        def do_GET(self):
+            if self.headers.get("Host") not in {"127.0.0.1:8766", "localhost:8766"}:
+                self.send_error(403)
+                return
+            path = urlsplit(self.path).path
+            if path in {"/", "/index.html", "/app.js", "/style.css"}:
+                super().do_GET()
+            elif path == "/dashboard.json":
+                try:
+                    payload = json.dumps(dashboard_data()).encode("utf-8")
+                except DevhubError:
+                    self.send_error(503, "Project data unavailable")
+                    return
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("Content-Length", str(len(payload)))
+                self.end_headers()
+                self.wfile.write(payload)
+            else:
+                self.send_error(404)
+
+        def do_HEAD(self):
+            self.send_error(405)
 
         def log_message(self, fmt, *args):
             return
@@ -205,7 +250,7 @@ def serve_dashboard() -> None:
 def _patch_apply(project_id: str, candidate_arg: str) -> str:
     state = rehydrate(project_id)
     candidate_path = (state["project_dir"] / candidate_arg).resolve()
-    if not candidate_path.is_relative_to(state["project_dir"].resolve()):
+    if not candidate_path.is_relative_to(state_file(state["project_dir"], "patch-candidates")):
         raise DevhubError("WRITE_BLOCKED: candidate path escapes the selected project.")
     from .core import read_json
     candidate = read_json(candidate_path)
@@ -217,7 +262,8 @@ def _patch_apply(project_id: str, candidate_arg: str) -> str:
         allowed_path(state["profile"], state["source"], path)
     worktree = apply_candidate(state["profile"], state["source"], candidate)
     affected_files = [patch["path"] for patch in candidate.get("patches", [])]
-    evidence = list(state["current"]["checkpoint"]["results"]) if state["current"] else []
+    evidence = [item for item in state["working"]["checkpoint"]["results"]
+                if item.get("commit") == state["revision"]["commit"]] if state["working"] else []
     evidence.append(make_evidence(
         "patch-apply", candidate_arg, state["revision"]["commit"], "isolated local Git worktree",
         f"Materialized {len(affected_files)} scoped patch(es) at {worktree}.", "VERIFIZIERT",
@@ -228,7 +274,7 @@ def _patch_apply(project_id: str, candidate_arg: str) -> str:
         [{"step": "Run re-audit in isolated worktree", "status": "OFFEN",
           "depends_on": ["patch-apply"], "worktree": str(worktree),
           "affected_files": affected_files}],
-        list(state["profile"]["writable_paths"]), affected_files,
+        list(state["profile"]["writable_paths"]), affected_files, observed=state,
     )
     return f"Scoped patch materialized in isolated worktree: {worktree}; run 666DEV {project_id} WEITER."
 
@@ -253,35 +299,42 @@ def execute(tokens: list[str]) -> str:
         raise DevhubError("Project selection is required.")
     project_id, action = normalized[1].lower(), normalized[2]
     project_profile(project_id)
+    if action not in {"PATCH-APPLY", "MANIFEST"} and len(normalized) != 3:
+        raise DevhubError(f"{action} takes only a project ID.")
     if action == "STATUS":
         return render_status(project_id)
+    if action == "MANIFEST":
+        from .manifests import inspect_manifest
+
+        if len(normalized) > 4:
+            raise DevhubError("MANIFEST accepts only one optional input file.")
+        _, project_dir = project_profile(project_id)
+        path = Path(normalized[3]) if len(normalized) == 4 else project_dir / "development-manifest.json"
+        return json.dumps(inspect_manifest(project_id, path), indent=2, ensure_ascii=False)
     if action == "CONTEXT":
-        if len(normalized) != 3:
-            raise DevhubError("CONTEXT takes only a project ID.")
         return json.dumps(export_context(project_id), indent=2)
     if action == "VISUAL":
-        return "Run: python -m devhub.cli dashboard"
+        return f"Run: python -m devhub.cli dashboard\nOpen: http://127.0.0.1:8766/?project={project_id}"
     if action == "FREEZE":
         state = rehydrate(project_id)
-        archive, manifest = freeze_project(state["profile"], state["source"])
-        return json.dumps({"status": "VERIFIZIERT", "archive": str(archive),
-                           "files": len(manifest), "manifest_sha256": {
-                               name: digest for name, digest in manifest.items()
-                           }}, indent=2)
+        revision = state["revision"]["commit"]
+        archive, manifest = freeze_project(state["profile"], state["source"], revision=revision)
+        checks = freeze_start_checks(archive, state["profile"], revision)
+        from hashlib import file_digest
+        with archive.open("rb") as stream:
+            digest = file_digest(stream, "sha256").hexdigest()
+        start_status = "VERIFIZIERT" if all(item["status"] == "VERIFIZIERT" for item in checks) else (
+            "BLOCKIERT" if any(item["status"] == "BLOCKIERT" for item in checks) else "OFFEN"
+        )
+        return json.dumps({"status": start_status, "archive_status": "VERIFIZIERT",
+                           "archive": str(archive), "sha256": digest, "bytes": archive.stat().st_size,
+                           "commit": revision, "files": len(manifest), "manifest_sha256": manifest,
+                           "start_checks": checks}, indent=2)
     if action == "PATCH-APPLY":
         if len(normalized) != 4:
             raise DevhubError("PATCH-APPLY requires a candidate path.")
         return _patch_apply(project_id, normalized[3])
-    if action == "UPDATE":
-        state = rehydrate(project_id)
-        if state["current"] and state["current"]["checkpoint"]["observed_head"] != state["revision"]["commit"]:
-            raise DevhubError("CONFLICT_QUARANTINE: HEAD differs from Current; re-audit before UPDATE.")
-        if state["current"] and any(
-            item.get("status") in {"OFFEN", "BLOCKIERT"}
-            for item in state["current"]["checkpoint"].get("open_work", [])
-        ):
-            raise DevhubError("BLOCKIERT: resolve open or blocked work before UPDATE.")
-    elif action not in {"SYSTEMSTART", "WEITER", "CODEFORGE", "SUPERCODEFORGE"}:
+    if action not in {"SYSTEMSTART", "WEITER", "CODEFORGE", "SUPERCODEFORGE", "BUILD", "UPDATE"}:
         raise DevhubError(f"Unknown action {action}. Try 666DEV HELP.")
     return json.dumps(_checkpoint_action(project_id, action), indent=2)
 

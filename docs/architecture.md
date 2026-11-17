@@ -8,12 +8,19 @@ write scope and acceptance conditions. A monorepo source is below this repositor
 a linked source remains in its own local Git checkout. Local checkout paths are stored
 only in ignored `.work/config.json`.
 
-Current references and immutable checkpoints are written below the selected project's
-`state/`. The checkpoint is written and hashed before the Current pointer is updated
-under a project lock. The pointer is compared with its original value immediately
-before replacement and read back afterward. A conflict leaves Current unchanged.
-Ignored `.work/` contains locks, linked demo checkout, isolated worktrees, freezes,
-and temporary dashboard data.
+Each project owns immutable checkpoint bodies and two pointers in `state/`.
+`working.json` records ordinary continuation. `current.json` records the explicitly
+published baseline. A legacy project with only `current.json` keeps that baseline
+and can read it as the initial working anchor. In a fresh project the baseline is
+unset until a successful `UPDATE`.
+
+Pointer updates run under the project lock. The writer compares the previously
+read pointers, writes and reads back the hashed checkpoint, compares the pointers
+again and rechecks source HEAD before replacing the selected pointer. Publishing
+also checks the clean source boundary and fresh test/build evidence from the real
+checkout or committed source. A changed revision leaves earlier evidence attached
+to its checkpoint and triggers a new audit. Ignored `.work/` holds locks, linked
+demo checkout, isolated worktrees and freezes.
 
 ## Evidence and statuses
 
@@ -40,9 +47,9 @@ Without `--base`, commit-diff scope is skipped and the result is `PARTIAL`. Chec
 hashes are SHA-256 over the serialized checkpoint bytes. Freeze manifests map archive
 relative paths to SHA-256 digests; ZIP extraction paths are checked against traversal.
 
-The dashboard loads generated `dashboard.json` as data and binds locally on
-`127.0.0.1`. It has no command execution endpoint. Repository text is inserted using
-DOM text nodes, not HTML interpretation.
+The dashboard fetches fresh project state from a read-only local JSON endpoint.
+Project views share the same data, with separate working and published revisions.
+The server binds to loopback. Repository text is inserted using DOM text nodes.
 
 ## Demonstrations
 

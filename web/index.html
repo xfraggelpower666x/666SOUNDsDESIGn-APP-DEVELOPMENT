@@ -10,19 +10,29 @@
   <header><p class="eyebrow">666SOUNDsDESIGn · DEVELOPMENT HUB</p><h1>666DEV <span>LIVE CIRCLE</span></h1></header>
   <main>
     <aside><h2>Projekte</h2><nav id="projects" aria-label="Projektwahl"></nav>
-      <p class="provider">GitHub: READBACK_PENDING<br>CI: OFFEN<br>Zielhost: OFFEN</p>
+      <p class="provider" id="providers"></p>
     </aside>
-    <section aria-live="polite">
+    <section>
+      <p id="connection" role="status">Projektdaten werden geladen.</p>
       <div id="summary"></div>
-      <nav class="tabs" aria-label="Projektbereiche"><span>Übersicht</span><span>Livecircle</span><span>CodeForge</span><span>SuperCodeForge</span><span>Abnahme</span></nav>
-      <div id="history"></div>
+      <nav class="tabs" aria-label="Projektbereiche">
+        <button type="button" data-view="overview" aria-pressed="true">Übersicht</button>
+        <button type="button" data-view="livecircle" aria-pressed="false">Livecircle</button>
+        <button type="button" data-view="codeforge" aria-pressed="false">CodeForge</button>
+        <button type="button" data-view="graph" aria-pressed="false">SuperCodeForge</button>
+        <button type="button" data-view="verification" aria-pressed="false">Abnahme</button>
+      </nav>
       <button id="copy-command" type="button">CLI-Befehl kopieren</button>
-      <h2>Entwicklungspfad</h2><div id="path" class="cards"></div>
-      <h2>Wirkungsgraph</h2><div class="graph-layout"><div id="nodes" class="nodes"></div><pre id="details">Wähle einen Graphknoten.</pre></div>
-      <h2>Evidenz und Blocker</h2>
-      <label for="status-filter">Statusfilter</label>
-      <select id="status-filter"><option value="ALL">Alle Status</option><option>VERIFIZIERT</option><option>ABGELEITET</option><option>VORGESCHLAGEN</option><option>OFFEN</option><option>BLOCKIERT</option><option>PARTIAL</option><option>WRITE_BLOCKED</option><option>READBACK_PENDING</option><option>CONFLICT_QUARANTINE</option></select>
-      <div id="evidence"></div>
+      <div data-panel="overview"><h2>Entwicklungspfad</h2><div id="path" class="cards"></div></div>
+      <div data-panel="livecircle" hidden><h2>Arbeitsstand und Historie</h2><div id="history"></div></div>
+      <div data-panel="codeforge" hidden><h2>CodeForge-Befunde</h2><div id="findings"></div></div>
+      <div data-panel="graph" hidden><h2>Wirkungsgraph</h2><div class="graph-layout"><div id="nodes" class="nodes"></div><pre id="details"></pre></div></div>
+      <div data-panel="verification" hidden>
+        <h2>Evidenz und Blocker</h2>
+        <label for="status-filter">Statusfilter</label>
+        <select id="status-filter"><option value="ALL">Alle Status</option><option>VERIFIZIERT</option><option>ABGELEITET</option><option>VORGESCHLAGEN</option><option>OFFEN</option><option>BLOCKIERT</option><option>PARTIAL</option><option>WRITE_BLOCKED</option><option>READBACK_PENDING</option><option>CONFLICT_QUARANTINE</option></select>
+        <div id="evidence"></div>
+      </div>
     </section>
   </main>
   <script src="app.js"></script>

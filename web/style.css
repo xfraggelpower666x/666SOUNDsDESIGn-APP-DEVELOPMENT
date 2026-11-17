@@ -5,15 +5,17 @@ header { padding:1.5rem 4vw; border-bottom:1px solid #443057; }
 h1 { margin:.1rem 0; letter-spacing:.08em; } h1 span,.eyebrow { color:var(--cyan); } .eyebrow { font-size:.75rem; letter-spacing:.15em; }
 main { display:grid; grid-template-columns:230px 1fr; gap:1.5rem; padding:1.5rem 4vw; }
 aside,section { background:#0f0d18dd; border:1px solid #403251; border-radius:12px; padding:1.25rem; }
-button,.tabs span { background:var(--panel); color:var(--text); border:1px solid #675078; padding:.65rem; border-radius:7px; cursor:pointer; }
+button { background:var(--panel); color:var(--text); border:1px solid #675078; padding:.65rem; border-radius:7px; cursor:pointer; }
 button { display:block; width:100%; margin:.5rem 0; text-align:left; } button[aria-pressed=true] { border-color:var(--pink); box-shadow:0 0 12px #ff54b833; }
 button:focus-visible,select:focus-visible { outline:3px solid var(--cyan); outline-offset:2px; }
 select { background:var(--panel); color:var(--text); border:1px solid #675078; padding:.55rem; border-radius:7px; }
 .provider { color:var(--muted); font-size:.83rem; margin-top:2rem; }
-.tabs { display:flex; flex-wrap:wrap; gap:.5rem; margin:1rem 0 2rem; } .tabs span { color:var(--cyan); }
+.tabs { display:flex; flex-wrap:wrap; gap:.5rem; margin:1rem 0 2rem; } .tabs button { color:var(--cyan); width:auto; margin:0; }
 .cards,.graph-layout { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:.75rem; }
 .card,.nodes button,pre,.empty { background:var(--panel); border:1px solid #393049; border-radius:8px; padding:.8rem; }
 .card b { color:var(--pink); } .graph-layout { grid-template-columns:minmax(200px,1fr) 2fr; }
 .nodes button { width:100%; overflow-wrap:anywhere; } pre { white-space:pre-wrap; overflow-wrap:anywhere; color:var(--muted); }
 a { color:var(--cyan); } .evidence { padding:.75rem 0; border-bottom:1px solid #383041; }
 @media(max-width:700px) { main { grid-template-columns:1fr; } .graph-layout { grid-template-columns:1fr; } }
+
+.provider { white-space:pre-line; }

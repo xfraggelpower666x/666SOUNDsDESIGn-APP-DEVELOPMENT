@@ -29,6 +29,8 @@ python -m devhub.cli 666DEV demo-monorepo SYSTEMSTART
 python -m devhub.cli 666DEV demo-monorepo CODEFORGE
 python -m devhub.cli 666DEV demo-monorepo SUPERCODEFORGE
 python -m devhub.cli 666DEV demo-monorepo WEITER
+python -m devhub.cli 666DEV demo-monorepo BUILD
+python -m devhub.cli 666DEV demo-monorepo UPDATE
 python -m devhub.cli 666DEV demo-monorepo STATUS
 python -m devhub.cli 666DEV demo-monorepo FREEZE
 ```
@@ -40,16 +42,25 @@ tests and records read-only audit evidence plus a scoped candidate in project st
 open step and performs its defined analysis or acceptance check. A candidate is not
 applied automatically: `PATCH-APPLY` validates its revision and allowed paths, then
 materializes its patch payload in a detached, isolated Git worktree. The demonstration
-candidate intentionally has no patch payload. `UPDATE` writes a checkpoint only for
-the explicitly selected project, with a lock, Current compare-and-swap and pointer
-readback. Conflicts preserve the existing Current and retain the candidate checkpoint.
-`FREEZE` creates a ZIP plus SHA-256 manifest under the ignored `.work/` directory and
-verifies each archive entry.
+candidate intentionally has no patch payload. Ordinary checkpoints advance
+`state/working.json`. Only explicit `UPDATE` publishes `state/current.json` after
+the current revision passes fresh source acceptance and configured build checks.
+After HEAD changes, `WEITER` starts a new audit and keeps prior evidence in the
+previous checkpoint. A conflict preserves the competing pointer.
 
-Checkpoints, Current references and patch candidates live under each project's
-versionable `state/` directory. Checkouts, locks, worktrees, freezes and dashboard
-working data live in ignored `.work/`. The demo linked checkout is initialized on
-first use from `tests/fixtures/linked-demo`, with actual Git commits on `main`.
+`BUILD` runs declared build commands in a temporary copy of committed regular
+files and records the result. The demos use Python compilation. Temporary build
+outputs are discarded. `FREEZE` creates a source ZIP from the verified Git commit,
+checks its embedded manifest, and reports archive size and SHA-256. If the profile
+declares `start_commands`, it runs them against a temporary extraction. Without
+start commands the archive status and pending start acceptance are reported separately.
+Command arrays such as `["python", "app.py"]` preserve argument boundaries across hosts.
+Existing string command profiles remain supported.
+
+Checkpoints, pointers and patch candidates live under each project's `state/`
+directory. Checkouts, locks, worktrees and freezes live under ignored `.work/`.
+The linked demo checkout initializes on the first stateful action. Existing linked
+checkouts retain their present commit and can be inspected independently.
 
 To register an external linked project, add its stable ID and profile path to
 `registry/projects.json`, then provide `projects/<id>/project.json`. The profile must
@@ -79,9 +90,9 @@ python -m unittest discover -s tests -v
 (cd projects/demo-monorepo/app && python -m unittest discover -s tests -v)
 ```
 
-The dashboard binds only to loopback and exposes static files, not command execution.
-It reads structured project state and displays evidence, graph, history, and open
-provider status. GitHub readback is `READBACK_PENDING`; CI and target-host providers
+The dashboard binds only to loopback. Its read-only project data endpoint refreshes
+evidence, graph, history, and provider status while the server runs. Use
+`666DEV <ID> VISUAL` for a URL that opens a specific project. GitHub readback is `READBACK_PENDING`; CI and target-host providers
 are `OFFEN`. Local tests are not presented as remote, Windows, device, or production
 acceptance. The verifier reports its actual diff base; without one it returns `PARTIAL`.
 
@@ -120,6 +131,14 @@ Menschen, Codex, GitHub Copilot und ChatGPT mit Repo-Zugriff können dieselbe
 JSON-Datei lesen. Die Auswertungsregeln sind als Daten und Arbeitsanweisungen
 hinterlegt. Zum Prüfen der JSON-Syntax dient
 `python -m json.tool projects/<projekt-id>/development-manifest.json`.
+
+`python -m devhub.cli 666DEV <projekt-id> MANIFEST [datei]` prüft die Struktur
+von Manifesten v1.0.0 und v1.5.0. Ohne Dateipfad liest es die Projektkopie.
+Bei einem DEU/ENG-Karten-ZIP prüft es Index, Sprachpaare und die SHA-256-Werte
+der indizierten Quellen. Die Ausgabe fasst die Eingabe zusammen und ordnet die
+älteren Belegfelder zu. Bestehende Quellenstatus bleiben sichtbar. Ein in der
+Quelle als verifiziert gekennzeichneter Beleg bleibt bis zur unabhängigen Prüfung
+in 666DEV offen. Das Kommando arbeitet lesend und kopiert keine Karten ins Repo.
 
 ## Entwicklungswege
 
