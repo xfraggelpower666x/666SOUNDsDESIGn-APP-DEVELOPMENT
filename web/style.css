@@ -7,7 +7,8 @@ main { display:grid; grid-template-columns:230px 1fr; gap:1.5rem; padding:1.5rem
 aside,section { background:#0f0d18dd; border:1px solid #403251; border-radius:12px; padding:1.25rem; }
 button,.tabs span { background:var(--panel); color:var(--text); border:1px solid #675078; padding:.65rem; border-radius:7px; cursor:pointer; }
 button { display:block; width:100%; margin:.5rem 0; text-align:left; } button[aria-pressed=true] { border-color:var(--pink); box-shadow:0 0 12px #ff54b833; }
-button:focus-visible { outline:3px solid var(--cyan); outline-offset:2px; }
+button:focus-visible,select:focus-visible { outline:3px solid var(--cyan); outline-offset:2px; }
+select { background:var(--panel); color:var(--text); border:1px solid #675078; padding:.55rem; border-radius:7px; }
 .provider { color:var(--muted); font-size:.83rem; margin-top:2rem; }
 .tabs { display:flex; flex-wrap:wrap; gap:.5rem; margin:1rem 0 2rem; } .tabs span { color:var(--cyan); }
 .cards,.graph-layout { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:.75rem; }

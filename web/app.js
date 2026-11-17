@@ -1,6 +1,7 @@
 const projects = document.querySelector("#projects");
 let data;
 let selected;
+let command = "";
 
 function text(tag, value) {
   const node = document.createElement(tag);
@@ -25,7 +26,10 @@ function render() {
   }
   summary.append(text("p", `${project.name} · Current ${project.commit || "OFFEN"} · ${project.revision_status}`));
   summary.append(text("p", `Letzte gültige Session: ${project.last_session || "OFFEN"} · Nächster Schritt: ${project.next_step || "OFFEN"}`));
-  summary.append(text("p", `CLI: 666DEV ${project.id} ${project.next_step?.includes("CodeForge") ? "CODEFORGE" : "STATUS"}`));
+  command = `666DEV ${project.id} ${project.next_step?.includes("CodeForge") ? "CODEFORGE" : "STATUS"}`;
+  summary.append(text("p", `CLI: ${command}`));
+  document.querySelector("#history").textContent =
+    `Rückkehranker: ${project.recovery_anchor || "OFFEN"} · Checkpoint-Historie: ${(project.history || []).join(", ") || "OFFEN"}`;
   const path = document.querySelector("#path");
   path.replaceChildren();
   for (const label of ["Auftrag", "Ursachenanalyse", "Patch-Kandidat", "Re-Audit", "Abnahme"]) {
@@ -45,7 +49,8 @@ function render() {
   if (!project.graph.nodes?.length) nodes.append(text("p", "OFFEN — noch keine Graphdaten vorhanden."));
   const evidence = document.querySelector("#evidence");
   evidence.replaceChildren();
-  const records = project.evidence || [];
+  const filter = document.querySelector("#status-filter").value;
+  const records = (project.evidence || []).filter(record => filter === "ALL" || record.status === filter);
   if (!records.length) evidence.append(text("p", "OFFEN — SYSTEMSTART erzeugt die ersten Belege."));
   for (const record of records) {
     const row = document.createElement("div");
@@ -54,6 +59,16 @@ function render() {
     evidence.append(row);
   }
 }
+
+document.querySelector("#status-filter").addEventListener("change", render);
+document.querySelector("#copy-command").addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(command);
+    document.querySelector("#copy-command").textContent = "CLI-Befehl kopiert";
+  } catch {
+    document.querySelector("#copy-command").textContent = `CLI: ${command}`;
+  }
+});
 
 fetch("dashboard.json").then(response => response.json()).then(payload => {
   data = payload;

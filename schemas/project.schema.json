@@ -12,6 +12,7 @@
     "expected_repository": {"type": "string"},
     "expected_ref": {"type": "string", "minLength": 1},
     "entry_points": {"type": "array", "items": {"type": "string"}},
+    "console_entrypoints": {"type": "object", "additionalProperties": {"type": "string"}},
     "language_files": {"type": "array", "items": {"type": "string"}},
     "build_contracts": {"type": "array", "items": {"type": "string"}},
     "test_paths": {"type": "array", "items": {"type": "string"}},

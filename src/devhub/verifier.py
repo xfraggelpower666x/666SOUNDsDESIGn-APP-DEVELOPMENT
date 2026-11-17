@@ -17,6 +17,7 @@ from .core import (
 def verify(base: str | None = None) -> dict:
     errors: list[str] = []
     checked = 0
+    changed_files: list[str] = []
     try:
         entries = project_entries()
         for project_id, profile_ref in entries.items():
@@ -39,7 +40,10 @@ def verify(base: str | None = None) -> dict:
                     references = (profile.get("language_files", []) + profile.get("build_contracts", [])
                                   + profile.get("test_paths", []))
                     for relative in references:
-                        if not (source / relative).is_file():
+                        referenced_path = (source / relative).resolve()
+                        if not referenced_path.is_relative_to(source):
+                            errors.append(f"{project_id}: reference escapes source {relative}")
+                        elif not referenced_path.is_file():
                             errors.append(f"{project_id}: missing referenced file {relative}")
                     for writable in profile.get("writable_paths", []):
                         if PureWindowsPath(writable).is_absolute() or PureWindowsPath(writable).drive:
@@ -55,7 +59,8 @@ def verify(base: str | None = None) -> dict:
                     digest = hashlib.sha256(checkpoint_path.read_bytes()).hexdigest()
                     if current.get("sha256") != digest:
                         errors.append(f"{project_id}: checkpoint hash mismatch")
-                    if checkpoint.get("project_id") != project_id:
+                    if (checkpoint.get("project_id") != project_id
+                            or checkpoint.get("observed_head") != current.get("commit")):
                         errors.append(f"{project_id}: checkpoint project mismatch")
                     if not checkpoint.get("results"):
                         errors.append(f"{project_id}: checkpoint has no evidence")
@@ -84,14 +89,24 @@ def verify(base: str | None = None) -> dict:
                 if diff.returncode:
                     errors.append(f"Scope diff failed for base {base}")
                 else:
-                    for name in diff.stdout.splitlines():
+                    changed = set(diff.stdout.splitlines())
+                    untracked = subprocess.run(
+                        ["git", "-C", str(ROOT), "ls-files", "--others", "--exclude-standard"],
+                        capture_output=True, text=True,
+                    )
+                    if untracked.returncode:
+                        errors.append("Untracked-file scope check failed")
+                    changed.update(untracked.stdout.splitlines())
+                    for name in changed:
                         if name.startswith(".work/"):
                             errors.append(f"Scope diff includes ignored work area: {name}")
+                    changed_files = sorted(changed)
         return {
             "status": ("BLOCKIERT" if errors else "VERIFIZIERT" if base else "PARTIAL"),
             "diff_base": base or "UNSPECIFIED (working tree only)",
             "projects_checked": checked,
             "required_sources": {"registry": "VERIFIZIERT", "diff_base": "VERIFIZIERT" if base else "PARTIAL"},
+            "changed_files": changed_files,
             "errors": errors,
             "skipped": [] if base else ["Commit-to-HEAD diff comparison: no base supplied"],
         }

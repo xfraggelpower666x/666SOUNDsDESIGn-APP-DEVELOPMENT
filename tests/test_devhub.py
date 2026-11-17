@@ -1,12 +1,14 @@
 import tempfile
 import unittest
 from pathlib import Path
+import shutil
 from unittest.mock import patch
 
 from devhub import core
 from devhub.cli import execute
 from devhub.core import DevhubError
 from devhub.providers import LocalGitProvider
+from devhub.verifier import verify
 
 
 class DevhubTests(unittest.TestCase):
@@ -25,6 +27,42 @@ class DevhubTests(unittest.TestCase):
         self.assertIn(("src/demo_app/main.py", "pyproject.toml", "declares"), directions)
         self.assertIn(("pyproject.toml", "src/demo_app/main.py", "targets"), directions)
         self.assertIn(("pyproject.toml", "tests/test_demo_app.py", "checked_by"), directions)
+        self.assertEqual([], graph["diagnostics"])
+
+    def test_changed_entry_path_reports_build_and_package_impact(self):
+        profile, _ = core.project_profile("demo-monorepo")
+        original = (core.ROOT / profile["source_path"]).resolve()
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary) / "app"
+            shutil.copytree(original, source)
+            manifest = source / "pyproject.toml"
+            manifest.write_text(manifest.read_text(encoding="utf-8").replace(
+                "demo_app.main:main", "demo_app.legacy:main"), encoding="utf-8")
+            broken = core.python_graph(source, profile, "a" * 40)
+            self.assertTrue(any("demo_app.legacy:main" in item for item in broken["diagnostics"]))
+            patches = core.plan_entrypoint_repairs(profile, source)
+            self.assertEqual(["pyproject.toml"], [item["path"] for item in patches])
+            manifest.write_text(manifest.read_text(encoding="utf-8").replace(
+                "demo_app.legacy:main", "demo_app.main:main"), encoding="utf-8")
+            repaired = core.python_graph(source, profile, "a" * 40)
+            self.assertEqual([], repaired["diagnostics"])
+        state = core.rehydrate("demo-monorepo")
+        candidate = {
+            "project_id": profile["id"], "candidate_id": "entrypoint-repair-test",
+            "base_commit": state["revision"]["commit"], "patches": patches,
+        }
+        worktree = core.apply_candidate(profile, state["source"], candidate)
+        try:
+            isolated_source = worktree / profile["source_path"]
+            fixed_graph = core.python_graph(isolated_source, profile, state["revision"]["commit"])
+            self.assertEqual([], fixed_graph["diagnostics"])
+            checks = core.run_acceptance(profile, isolated_source, state["revision"]["commit"])
+            self.assertTrue(all(result["status"] == "VERIFIZIERT" for result in checks))
+            self.assertIn("demo_app.main:main",
+                          (isolated_source / "pyproject.toml").read_text(encoding="utf-8"))
+        finally:
+            repo_root = Path(core.git(state["source"], "rev-parse", "--show-toplevel"))
+            core.git(repo_root, "worktree", "remove", "--force", str(worktree))
 
     def test_path_outside_project_scope_is_blocked(self):
         profile, project_dir = core.project_profile("demo-monorepo")
@@ -65,6 +103,11 @@ class DevhubTests(unittest.TestCase):
         self.assertEqual(provider.read_file(commit, "pyproject.toml"),
                          provider.read_blob(commit, "pyproject.toml"))
 
+    def test_linked_project_acceptance_uses_its_real_checkout(self):
+        state = core.rehydrate("demo-linked")
+        results = core.run_acceptance(state["profile"], state["source"], state["revision"]["commit"])
+        self.assertEqual(["VERIFIZIERT"], [item["status"] for item in results])
+
     def test_patch_apply_uses_scoped_isolated_worktree(self):
         state = core.rehydrate("demo-monorepo")
         profile, source = state["profile"], state["source"]
@@ -97,6 +140,10 @@ class DevhubTests(unittest.TestCase):
         source = (core.ROOT / profile["source_path"]).resolve()
         with self.assertRaisesRegex(DevhubError, "Windows absolute path"):
             core.allowed_path(profile, source, r"C:\outside\file.py")
+
+    def test_verifier_marks_missing_diff_base_partial(self):
+        self.assertEqual("PARTIAL", verify()["status"])
+        self.assertEqual("VERIFIZIERT", verify("HEAD")["status"])
 
 
 if __name__ == "__main__":

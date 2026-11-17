@@ -9,11 +9,12 @@
   "expected_repository": "666dev-demo-linked",
   "expected_ref": "main",
   "entry_points": ["src/linked_demo/main.py"],
+  "console_entrypoints": {"linked-demo": "linked_demo.main:main"},
   "language_files": ["pyproject.toml"],
   "build_contracts": ["pyproject.toml"],
   "test_paths": ["test_linked_demo.py"],
-  "writable_paths": ["src", "tests"],
+  "writable_paths": ["src", "tests", "pyproject.toml"],
   "build_commands": ["python -m pip install -e ."],
-  "test_commands": ["python -m unittest discover"],
+  "test_commands": ["python -m unittest discover -s tests"],
   "acceptance": ["linked repository identity and expected ref match"]
 }

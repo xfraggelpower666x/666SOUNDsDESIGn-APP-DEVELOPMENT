@@ -9,10 +9,11 @@
   "source_path": "projects/demo-monorepo/app",
   "expected_ref": "HEAD",
   "entry_points": ["src/demo_app/main.py"],
+  "console_entrypoints": {"demo-app": "demo_app.main:main"},
   "language_files": ["pyproject.toml"],
   "build_contracts": ["pyproject.toml"],
   "test_paths": ["tests/test_demo_app.py"],
-  "writable_paths": ["src/demo_app", "state"],
+  "writable_paths": ["src/demo_app", "pyproject.toml"],
   "build_commands": ["python -m pip install -e ."],
   "test_commands": ["python -m unittest discover -s tests"],
   "acceptance": ["entry-point target exists", "tracked tests pass"]

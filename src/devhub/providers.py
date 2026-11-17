@@ -27,7 +27,8 @@ class LocalGitProvider:
         self.base_path = self.checkout.relative_to(self.repo_root).as_posix()
 
     def read_commit(self, revision: str) -> str:
-        return git(self.checkout, "rev-parse", "--verify", f"{revision}^{{commit}}")
+        return git(self.checkout, "rev-parse", "--verify", "--end-of-options",
+                   f"{revision}^{{commit}}")
 
     def read_file(self, revision: str, relative_path: str) -> bytes:
         windows_path = PureWindowsPath(relative_path)

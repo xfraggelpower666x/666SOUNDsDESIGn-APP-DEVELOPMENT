@@ -7,7 +7,7 @@ explicitly marked demonstrations.
 
 ## Start (Windows and Linux)
 
-Requires Python 3.10+ and Git; no runtime third-party package is required.
+Requires Python 3.11+ and Git; no runtime third-party package is required.
 
 ```sh
 python -m venv .venv

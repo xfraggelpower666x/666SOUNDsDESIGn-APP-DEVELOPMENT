@@ -58,9 +58,14 @@ def atomic_json(path: Path, payload: Any) -> None:
 
 def project_entries() -> dict[str, str]:
     registry = read_json(REGISTRY)
-    if registry.get("schema_version") != 1 or not isinstance(registry.get("projects"), dict):
+    if (not isinstance(registry, dict) or registry.get("schema_version") != 1
+            or not isinstance(registry.get("projects"), dict)):
         raise DevhubError("Registry schema is invalid.")
-    return registry["projects"]
+    projects = registry["projects"]
+    if any(not isinstance(project_id, str) or not ID_RE.fullmatch(project_id)
+           or not isinstance(profile_path, str) for project_id, profile_path in projects.items()):
+        raise DevhubError("Registry contains an invalid project ID or profile path.")
+    return projects
 
 
 def project_profile(project_id: str) -> tuple[dict[str, Any], Path]:
@@ -70,12 +75,62 @@ def project_profile(project_id: str) -> tuple[dict[str, Any], Path]:
     profile_rel = entries.get(project_id)
     if not profile_rel:
         raise DevhubError(f"Unknown project ID: {project_id}")
+    if not isinstance(profile_rel, str):
+        raise DevhubError(f"Invalid registry profile path for {project_id}.")
+    profile_windows_path = PureWindowsPath(profile_rel)
+    profile_posix_path = PurePosixPath(profile_rel)
+    if (profile_windows_path.is_absolute() or profile_windows_path.drive
+            or profile_posix_path.is_absolute() or ".." in profile_posix_path.parts
+            or "\\" in profile_rel):
+        raise DevhubError("Registry profile path must be a repository-relative POSIX path.")
     profile_path = (ROOT / profile_rel).resolve()
     if not profile_path.is_relative_to(ROOT.resolve()):
         raise DevhubError("Registry profile path escapes the repository.")
     profile = read_json(profile_path)
+    if not isinstance(profile, dict):
+        raise DevhubError(f"Project profile for {project_id} must be a JSON object.")
     if profile.get("id") != project_id:
         raise DevhubError(f"Profile ID mismatch for {project_id}.")
+    if profile.get("source_mode") not in {"monorepo", "linked"}:
+        raise DevhubError(f"Unsupported source mode for {project_id}.")
+    if profile.get("source_mode") == "monorepo":
+        source_rel = profile.get("source_path", "")
+        if not isinstance(source_rel, str):
+            raise DevhubError("Monorepo source_path must be a string.")
+        windows_source = PureWindowsPath(source_rel)
+        posix_source = PurePosixPath(source_rel)
+        if (windows_source.is_absolute() or windows_source.drive or posix_source.is_absolute()
+                or ".." in posix_source.parts or "\\" in source_rel):
+            raise DevhubError("Monorepo source path must be a repository-relative POSIX path.")
+    writable_paths = profile.get("writable_paths", [])
+    if not isinstance(writable_paths, list):
+        raise DevhubError(f"writable_paths must be an array in profile {project_id}.")
+    for writable in writable_paths:
+        windows_path = PureWindowsPath(writable) if isinstance(writable, str) else PureWindowsPath()
+        posix_path = PurePosixPath(writable) if isinstance(writable, str) else PurePosixPath()
+        if (not isinstance(writable, str) or "\\" in writable or windows_path.is_absolute()
+                or windows_path.drive or posix_path.is_absolute() or ".." in posix_path.parts):
+            raise DevhubError(f"Invalid writable path in profile {project_id}: {writable}")
+    for key in ("entry_points", "language_files", "build_contracts", "test_paths"):
+        values = profile.get(key, [])
+        if not isinstance(values, list) or any(
+            not isinstance(value, str) or "\\" in value or PureWindowsPath(value).is_absolute()
+            or PureWindowsPath(value).drive or PurePosixPath(value).is_absolute()
+            or ".." in PurePosixPath(value).parts
+            for value in values
+        ):
+            raise DevhubError(f"Invalid {key} path list in profile {project_id}.")
+    if not isinstance(profile.get("expected_ref"), str) or not profile["expected_ref"]:
+        raise DevhubError(f"Profile {project_id} requires expected_ref.")
+    if profile["source_mode"] == "linked" and not isinstance(profile.get("expected_repository"), str):
+        raise DevhubError(f"Linked profile {project_id} requires expected_repository.")
+    if not isinstance(profile.get("console_entrypoints", {}), dict) or any(
+        not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9_.-]+", name)
+        or not isinstance(target, str) or
+        not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.]*:[A-Za-z_][A-Za-z0-9_.]*", target)
+        for name, target in profile.get("console_entrypoints", {}).items()
+    ):
+        raise DevhubError(f"Invalid console entry point contract in profile {project_id}.")
     return profile, profile_path.parent
 
 
@@ -124,6 +179,8 @@ def resolve_source(profile: dict[str, Any]) -> Path:
         return ensure_linked_demo()
     if not configured:
         raise DevhubError("Linked checkout missing; set .work/config.json with its local path.")
+    if not isinstance(configured, str):
+        raise DevhubError("Linked checkout path must be a string in .work/config.json.")
     source = Path(configured).expanduser().resolve()
     if not (source / ".git").exists():
         raise DevhubError(f"Linked checkout is not a Git repository: {source}")
@@ -145,11 +202,12 @@ def resolve_revision(profile: dict[str, Any], source: Path) -> dict[str, str]:
             ["git", "-C", str(source), "config", "--get", "remote.origin.url"],
             capture_output=True,
         ).returncode == 0 else None
-        if expected_repo and not identity and remote and remote != expected_repo:
+        if expected_repo and remote and remote != expected_repo:
             raise DevhubError(f"Linked repository identity mismatch: expected {expected_repo}, got {remote}")
         if expected_repo and not identity and not remote:
             raise DevhubError("Linked repository identity cannot be verified: origin remote is missing.")
-    ref_commit = git(source, "rev-parse", "--verify", f"{expected_ref}^{{commit}}")
+    ref_commit = git(source, "rev-parse", "--verify", "--end-of-options",
+                     f"{expected_ref}^{{commit}}")
     if ref_commit != commit:
         raise DevhubError(f"Expected ref {expected_ref} resolves to {ref_commit}, but HEAD is {commit}.")
     return {"commit": commit, "branch": branch or "DETACHED", "expected_ref": expected_ref}
@@ -158,14 +216,17 @@ def resolve_revision(profile: dict[str, Any], source: Path) -> dict[str, str]:
 def allowed_path(profile: dict[str, Any], source: Path, candidate: str | Path) -> Path:
     raw = Path(candidate)
     windows_path = PureWindowsPath(str(candidate))
-    if windows_path.is_absolute() or windows_path.drive:
+    if windows_path.is_absolute() or windows_path.drive or "\\" in str(candidate):
         raise DevhubError(f"WRITE_BLOCKED: Windows absolute path is not a project-relative path: {candidate}")
     if raw.is_absolute():
         target = raw.resolve()
     else:
         target = (source / raw).resolve()
-    roots = [source / path for path in profile.get("writable_paths", [])]
-    if not any(target.is_relative_to(root.resolve()) for root in roots):
+    source_root = source.resolve()
+    roots = [(source_root / path).resolve() for path in profile.get("writable_paths", [])]
+    if any(not root.is_relative_to(source_root) for root in roots):
+        raise DevhubError("WRITE_BLOCKED: profile write root escapes project source.")
+    if not any(target.is_relative_to(root) for root in roots):
         raise DevhubError(f"WRITE_BLOCKED: path is outside project write scope: {target}")
     return target
 
@@ -215,13 +276,17 @@ def load_current(profile: dict[str, Any], project_dir: Path) -> dict[str, Any] |
         raise DevhubError(f"Current points to missing checkpoint: {current['checkpoint_id']}")
     body = read_json(checkpoint)
     digest = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
-    if current.get("sha256") != digest or body.get("project_id") != profile["id"]:
+    if (current.get("schema_version") != 1 or current.get("project_id") != profile["id"]
+            or current.get("sha256") != digest or body.get("project_id") != profile["id"]
+            or body.get("schema_version") != 1 or body.get("checkpoint_id") != current["checkpoint_id"]
+            or current.get("commit") != body.get("observed_head")):
         raise DevhubError("Current/checkpoint integrity mismatch; quarantined for recovery.")
     return {"pointer": current, "checkpoint": body}
 
 
 def checkpoint(profile: dict[str, Any], project_dir: Path, revision: str, task: str,
-               evidence: list[dict[str, Any]], open_work: list[dict[str, Any]], scope: list[str]) -> dict[str, Any]:
+               evidence: list[dict[str, Any]], open_work: list[dict[str, Any]], scope: list[str],
+               affected_files: list[str] | None = None) -> dict[str, Any]:
     project_dir = project_dir.resolve()
     state_dir = project_dir / "state"
     state_dir.mkdir(parents=True, exist_ok=True)
@@ -234,7 +299,7 @@ def checkpoint(profile: dict[str, Any], project_dir: Path, revision: str, task: 
             "task": task, "base_commit": prior.get("commit") if prior else revision,
             "observed_head": revision, "allowed_scope": scope,
             "return_anchor": prior.get("checkpoint_id") if prior else None,
-            "affected_files": [], "results": evidence, "open_work": open_work,
+            "affected_files": affected_files or [], "results": evidence, "open_work": open_work,
             "created_at": utc_now(),
         }
         destination = checkpoint_file(project_dir, checkpoint_id)
@@ -253,8 +318,14 @@ def checkpoint(profile: dict[str, Any], project_dir: Path, revision: str, task: 
 
 def run_acceptance(profile: dict[str, Any], source: Path, revision: str) -> list[dict[str, Any]]:
     evidence = []
-    for configured in profile.get("test_commands", []):
+    commands = profile.get("test_commands", [])
+    for configured in commands:
         command = shlex.split(configured, posix=os.name != "nt")
+        if not command:
+            evidence.append(make_evidence("test", configured, revision,
+                                          f"{sys.platform}; Python {sys.version.split()[0]}",
+                                          "Configured acceptance command is empty.", "BLOCKIERT"))
+            continue
         if command and Path(command[0]).name.lower() in {"python", "python3", "python.exe"}:
             command[0] = sys.executable
         try:
@@ -269,6 +340,10 @@ def run_acceptance(profile: dict[str, Any], source: Path, revision: str) -> list
         evidence.append(make_evidence("test", configured, revision,
                                       f"{sys.platform}; Python {sys.version.split()[0]}",
                                       observed, status))
+    if not commands:
+        evidence.append(make_evidence("test", "project.json", revision,
+                                      f"{sys.platform}; Python {sys.version.split()[0]}",
+                                      "No acceptance test command is configured.", "BLOCKIERT"))
     return evidence
 
 
@@ -279,11 +354,17 @@ def apply_candidate(profile: dict[str, Any], source: Path, candidate: dict[str, 
     if candidate.get("base_commit") != revision["commit"]:
         raise DevhubError("Candidate base commit differs from the verified HEAD.")
     patches = candidate.get("patches")
-    if not isinstance(patches, list) or not patches:
+    if not isinstance(patches, list) or not patches or any(not isinstance(patch, dict) for patch in patches):
         raise DevhubError("Candidate has no patch payload; no worktree was created.")
+    candidate_id = candidate.get("candidate_id", revision["commit"][:12])
+    if not isinstance(candidate_id, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", candidate_id):
+        raise DevhubError("Invalid candidate ID.")
     repo_root = Path(git(source, "rev-parse", "--show-toplevel")).resolve()
     source_from_root = source.resolve().relative_to(repo_root)
-    worktree = WORK / "worktrees" / profile["id"] / candidate.get("candidate_id", revision["commit"][:12])
+    parent = (WORK / "worktrees" / profile["id"]).resolve()
+    worktree = parent / candidate_id
+    if not worktree.resolve().is_relative_to(parent):
+        raise DevhubError("WRITE_BLOCKED: candidate worktree escapes its project work area.")
     if worktree.exists():
         raise DevhubError(f"WRITE_BLOCKED: candidate worktree already exists: {worktree}")
     worktree.parent.mkdir(parents=True, exist_ok=True)
@@ -324,6 +405,7 @@ def rehydrate(project_id: str) -> dict[str, Any]:
 def python_graph(source: Path, profile: dict[str, Any], revision: str) -> dict[str, Any]:
     nodes: list[dict[str, Any]] = []
     edges: list[dict[str, Any]] = []
+    diagnostics: list[str] = []
     py_files = sorted(source.rglob("*.py"))
     for path in py_files:
         if any(part in {".git", ".work", "__pycache__"} for part in path.parts):
@@ -363,7 +445,14 @@ def python_graph(source: Path, profile: dict[str, Any], revision: str) -> dict[s
                 try:
                     contract = tomllib.loads(contract_path.read_text(encoding="utf-8"))
                     scripts = contract.get("project", {}).get("scripts", {})
-                    for target in scripts.values():
+                    declared_scripts = profile.get("console_entrypoints", {})
+                    for command, expected_target in declared_scripts.items():
+                        if scripts.get(command) != expected_target:
+                            diagnostics.append(
+                                f"Console script {command} differs from profile: expected {expected_target}, "
+                                f"observed {scripts.get(command, 'MISSING')}."
+                            )
+                    for command, target in scripts.items():
                         module = target.split(":", 1)[0].replace(".", "/") + ".py"
                         if not (source / module).exists() and (source / "src" / module).exists():
                             module = f"src/{module}"
@@ -371,8 +460,26 @@ def python_graph(source: Path, profile: dict[str, Any], revision: str) -> dict[s
                             edges.append({"from": build_file, "to": module, "direction": "targets",
                                           "revision": revision, "evidence": "VERIFIZIERT",
                                           "source": build_file})
+                            symbol = target.split(":", 1)[1] if ":" in target else ""
+                            if symbol:
+                                try:
+                                    import ast
+                                    module_tree = ast.parse((source / module).read_text(encoding="utf-8"))
+                                    symbols = {node.name for node in ast.walk(module_tree)
+                                               if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef,
+                                                                    ast.ClassDef))}
+                                    if symbol.split(".", 1)[0] not in symbols:
+                                        diagnostics.append(
+                                            f"Console script {command} target {target} has no declared symbol."
+                                        )
+                                except (SyntaxError, UnicodeDecodeError):
+                                    diagnostics.append(f"Unable to parse console script module {module}.")
+                        else:
+                            diagnostics.append(
+                                f"Console script {command} target {target} has no tracked Python module."
+                            )
                 except (tomllib.TOMLDecodeError, UnicodeDecodeError):
-                    pass
+                    diagnostics.append(f"Unable to parse build contract {build_file}.")
         for test_path in profile.get("test_paths", []):
             nodes.append({"id": test_path, "kind": "test", "source": "project.json",
                           "revision": revision})
@@ -381,8 +488,42 @@ def python_graph(source: Path, profile: dict[str, Any], revision: str) -> dict[s
             for build_file in profile.get("build_contracts", []):
                 edges.append({"from": build_file, "to": test_path, "direction": "checked_by",
                               "revision": revision, "evidence": "ABGELEITET", "source": "project.json"})
-    return {"revision": revision, "nodes": nodes, "edges": edges,
+    return {"revision": revision, "nodes": nodes, "edges": edges, "diagnostics": diagnostics,
             "dynamic_bindings": {"status": "OFFEN", "reason": "Dynamic Python imports are not statically resolved."}}
+
+
+def plan_entrypoint_repairs(profile: dict[str, Any], source: Path) -> list[dict[str, str]]:
+    patches = []
+    for build_file in profile.get("build_contracts", []):
+        path = source / build_file
+        if path.suffix != ".toml" or not path.is_file():
+            continue
+        original = path.read_text(encoding="utf-8")
+        try:
+            scripts = tomllib.loads(original).get("project", {}).get("scripts", {})
+        except tomllib.TOMLDecodeError:
+            continue
+        updated = original
+        expected = profile.get("console_entrypoints", {})
+        for command, target in expected.items():
+            if scripts.get(command) == target:
+                continue
+            line = re.compile(
+                rf"(?m)^([ \t]*){re.escape(command)}([ \t]*=[ \t]*)(['\"])[^'\"\r\n]*\3[ \t]*$"
+            )
+            updated, count = line.subn(
+                lambda match: f'{match.group(1)}{command}{match.group(2)}"{target}"',
+                updated, count=1,
+            )
+            if not count and f"[project.scripts]" in updated:
+                updated = re.sub(
+                    r"(?m)^(\[project\.scripts\][ \t]*\r?\n)",
+                    lambda match: f'{match.group(1)}{command} = "{target}"\n',
+                    updated, count=1,
+                )
+        if updated != original:
+            patches.append({"path": build_file, "content": updated})
+    return patches
 
 
 def inspect_project(project_id: str) -> dict[str, Any]:
@@ -402,8 +543,17 @@ def inspect_project(project_id: str) -> dict[str, Any]:
 def validate_zip(archive: Path, manifest: dict[str, str]) -> list[str]:
     errors = []
     with zipfile.ZipFile(archive) as bundle:
+        names = bundle.namelist()
+        entries = set(names)
+        if len(entries) != len(names):
+            errors.append("ZIP contains duplicate entries.")
+        expected = set(manifest)
+        if expected != entries - {"manifest.json"}:
+            errors.append("ZIP entries do not match the manifest.")
         for name, digest in manifest.items():
-            if PurePosixPath(name).is_absolute() or ".." in PurePosixPath(name).parts:
+            windows_path = PureWindowsPath(name)
+            if (PurePosixPath(name).is_absolute() or ".." in PurePosixPath(name).parts
+                    or windows_path.is_absolute() or windows_path.drive or ".." in windows_path.parts):
                 errors.append(f"Unsafe ZIP entry: {name}")
                 continue
             try:

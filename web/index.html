@@ -15,9 +15,14 @@
     <section aria-live="polite">
       <div id="summary"></div>
       <nav class="tabs" aria-label="Projektbereiche"><span>Übersicht</span><span>Livecircle</span><span>CodeForge</span><span>SuperCodeForge</span><span>Abnahme</span></nav>
+      <div id="history"></div>
+      <button id="copy-command" type="button">CLI-Befehl kopieren</button>
       <h2>Entwicklungspfad</h2><div id="path" class="cards"></div>
       <h2>Wirkungsgraph</h2><div class="graph-layout"><div id="nodes" class="nodes"></div><pre id="details">Wähle einen Graphknoten.</pre></div>
-      <h2>Evidenz und Blocker</h2><div id="evidence"></div>
+      <h2>Evidenz und Blocker</h2>
+      <label for="status-filter">Statusfilter</label>
+      <select id="status-filter"><option value="ALL">Alle Status</option><option>VERIFIZIERT</option><option>ABGELEITET</option><option>VORGESCHLAGEN</option><option>OFFEN</option><option>BLOCKIERT</option><option>PARTIAL</option><option>WRITE_BLOCKED</option><option>READBACK_PENDING</option><option>CONFLICT_QUARANTINE</option></select>
+      <div id="evidence"></div>
     </section>
   </main>
   <script src="app.js"></script>

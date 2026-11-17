@@ -27,4 +27,8 @@ jobs:
         env:
           PYTHONPATH: src
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || 'HEAD' }}
-        run: python -m devhub.verifier --base "$BASE_SHA"
+        run: |
+          if [ -z "$BASE_SHA" ] || [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            BASE_SHA=HEAD
+          fi
+          python -m devhub.verifier --base "$BASE_SHA"
