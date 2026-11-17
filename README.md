@@ -95,6 +95,23 @@ absolute paths. If Current and checkpoint evidence disagree, preserve the old an
 inspect `.work/` recovery artifacts, and re-run `SYSTEMSTART`/audit rather than
 overwriting the pointer. A changed HEAD is explicitly marked for re-audit.
 
+## Copilot für die Entwicklung verwenden
+
+Im Copilot-Kontext dieses Repositories beschreibst du dein Ziel in normaler Sprache.
+Für eine Reparatur in einer registrierten Anwendung nenne die Projekt-ID und das
+beobachtete Verhalten. Für Änderungen am Hub selbst nenne 666DEV als Ziel. Die
+Repository-Skills helfen Copilot, Kontext, Prüfschritte und Belege zu ermitteln.
+
+| Aufgabe | Einstieg |
+| --- | --- |
+| Fehler am Anwendungseinstieg analysieren oder ein Feature entwickeln | [CodeForge](.github/agents/codeforge.agent.md) |
+| Auswirkungen einer Änderung auf Module, Builds und Tests verfolgen | [SuperCodeForge](.github/agents/supercodeforge.agent.md) |
+| Einen unterbrochenen Auftrag wieder aufnehmen | [Livecircle](.github/skills/666dev-livecircle/SKILL.md) |
+| Dashboard, Belegansicht oder Abnahme bearbeiten | [Visual](.github/skills/666dev-visual/SKILL.md) · [Verification](.github/skills/666dev-verification/SKILL.md) |
+
+Die Skills liegen im Repository unter `.github/skills/`. Die bestehenden
+CLI-Trigger sind in **Project lifecycle** dokumentiert.
+
 ## Current implementation boundaries
 
 - Python source graphing uses AST imports and declared TOML script entry points.
