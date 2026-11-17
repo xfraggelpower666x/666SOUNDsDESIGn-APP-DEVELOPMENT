@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "id": "demo-linked",
+  "name": "666DEV Linked Checkout Demonstration",
+  "demo": true,
+  "application_type": "Python CLI",
+  "platforms": ["Windows", "Linux"],
+  "source_mode": "linked",
+  "expected_repository": "666dev-demo-linked",
+  "expected_ref": "main",
+  "entry_points": ["src/linked_demo/main.py"],
+  "language_files": ["pyproject.toml"],
+  "build_contracts": ["pyproject.toml"],
+  "test_paths": ["test_linked_demo.py"],
+  "writable_paths": ["src", "tests"],
+  "build_commands": ["python -m pip install -e ."],
+  "test_commands": ["python -m unittest discover"],
+  "acceptance": ["linked repository identity and expected ref match"]
+}

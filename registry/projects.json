@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "projects": {
+    "demo-monorepo": "projects/demo-monorepo/project.json",
+    "demo-linked": "projects/demo-linked/project.json"
+  }
+}

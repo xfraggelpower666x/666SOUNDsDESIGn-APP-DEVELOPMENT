@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "666dev"
+version = "0.1.0"
+description = "Local-first development, verification, and recovery hub"
+requires-python = ">=3.10"
+
+[project.scripts]
+666dev = "devhub.cli:main"
+666dev-verify = "devhub.verifier:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

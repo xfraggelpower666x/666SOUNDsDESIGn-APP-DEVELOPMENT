@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "id": "demo-monorepo",
+  "name": "666DEV Monorepo Demonstration",
+  "demo": true,
+  "application_type": "Python CLI",
+  "platforms": ["Windows", "Linux"],
+  "source_mode": "monorepo",
+  "source_path": "projects/demo-monorepo/app",
+  "expected_ref": "HEAD",
+  "entry_points": ["src/demo_app/main.py"],
+  "language_files": ["pyproject.toml"],
+  "build_contracts": ["pyproject.toml"],
+  "test_paths": ["tests/test_demo_app.py"],
+  "writable_paths": ["src/demo_app", "state"],
+  "build_commands": ["python -m pip install -e ."],
+  "test_commands": ["python -m unittest discover -s tests"],
+  "acceptance": ["entry-point target exists", "tracked tests pass"]
+}
