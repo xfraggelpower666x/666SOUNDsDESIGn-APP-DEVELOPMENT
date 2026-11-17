@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import argparse
 import json
-import shlex
 import sys
 import uuid
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 
 from .core import (
     ROOT, DevhubError, allowed_path, apply_candidate, checkpoint, dashboard_data, freeze_project, inspect_project,
@@ -282,6 +282,7 @@ def execute(tokens: list[str]) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
+    invoked_as_console_script = Path(sys.argv[0]).name.lower() in {"666dev", "666dev.exe"}
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("command", nargs="*")
     parser.add_argument("--dashboard", action="store_true")
@@ -289,8 +290,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.dashboard or args.command == ["dashboard"]:
         serve_dashboard()
         return 0
+    if invoked_as_console_script and args.command and args.command[0].upper() != "666DEV":
+        args.command.insert(0, "666DEV")
     try:
-        print(execute(shlex.split(" ".join(args.command))))
+        print(execute(args.command))
         return 0
     except DevhubError as exc:
         print(f"666DEV: {exc}", file=sys.stderr)

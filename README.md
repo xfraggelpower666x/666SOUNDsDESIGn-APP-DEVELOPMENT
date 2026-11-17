@@ -18,8 +18,9 @@ python -m devhub.cli 666DEV HELP
 python -m devhub.cli 666DEV STATUS
 ```
 
-The same commands are available as `666dev` and `666dev-verify` after installation.
-Windows users can substitute `py -m` for `python -m`.
+The same commands are available as `666dev HELP`, `666dev STATUS`, or
+`666dev <PROJECT-ID> SYSTEMSTART` after installation. Use `666dev-verify --base HEAD`
+for verification. Windows users can substitute `py -m` for `python -m`.
 
 ## Project lifecycle
 

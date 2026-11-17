@@ -93,13 +93,24 @@ def project_profile(project_id: str) -> tuple[dict[str, Any], Path]:
         raise DevhubError(f"Profile ID mismatch for {project_id}.")
     if profile.get("source_mode") not in {"monorepo", "linked"}:
         raise DevhubError(f"Unsupported source mode for {project_id}.")
+    required = ("name", "application_type", "platforms", "entry_points", "language_files",
+                "build_contracts", "test_paths", "writable_paths", "build_commands",
+                "test_commands", "acceptance")
+    if any(key not in profile for key in required):
+        raise DevhubError(f"Project profile {project_id} is missing required contract fields.")
+    if not isinstance(profile.get("name"), str) or not profile["name"].strip():
+        raise DevhubError(f"Project profile {project_id} requires a display name.")
+    if not isinstance(profile.get("platforms"), list) or not profile["platforms"]:
+        raise DevhubError(f"Project profile {project_id} requires target platforms.")
+    if not isinstance(profile.get("acceptance"), list) or not profile["acceptance"]:
+        raise DevhubError(f"Project profile {project_id} requires acceptance criteria.")
     if profile.get("source_mode") == "monorepo":
         source_rel = profile.get("source_path", "")
         if not isinstance(source_rel, str):
             raise DevhubError("Monorepo source_path must be a string.")
         windows_source = PureWindowsPath(source_rel)
         posix_source = PurePosixPath(source_rel)
-        if (windows_source.is_absolute() or windows_source.drive or posix_source.is_absolute()
+        if (not source_rel or windows_source.is_absolute() or windows_source.drive or posix_source.is_absolute()
                 or ".." in posix_source.parts or "\\" in source_rel):
             raise DevhubError("Monorepo source path must be a repository-relative POSIX path.")
     writable_paths = profile.get("writable_paths", [])
@@ -122,7 +133,14 @@ def project_profile(project_id: str) -> tuple[dict[str, Any], Path]:
             raise DevhubError(f"Invalid {key} path list in profile {project_id}.")
     if not isinstance(profile.get("expected_ref"), str) or not profile["expected_ref"]:
         raise DevhubError(f"Profile {project_id} requires expected_ref.")
-    if profile["source_mode"] == "linked" and not isinstance(profile.get("expected_repository"), str):
+    for key in ("build_commands", "test_commands"):
+        commands = profile.get(key, [])
+        if not isinstance(commands, list) or any(not isinstance(command, str) or not command.strip()
+                                                 for command in commands):
+            raise DevhubError(f"Invalid {key} in profile {project_id}.")
+    if profile["source_mode"] == "linked" and (
+        not isinstance(profile.get("expected_repository"), str) or not profile["expected_repository"]
+    ):
         raise DevhubError(f"Linked profile {project_id} requires expected_repository.")
     if not isinstance(profile.get("console_entrypoints", {}), dict) or any(
         not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9_.-]+", name)
@@ -185,6 +203,21 @@ def resolve_source(profile: dict[str, Any]) -> Path:
     if not (source / ".git").exists():
         raise DevhubError(f"Linked checkout is not a Git repository: {source}")
     return source
+
+
+def validate_profile_source(profile: dict[str, Any], source: Path) -> None:
+    source = source.resolve()
+    for key in ("entry_points", "language_files", "build_contracts", "test_paths"):
+        for relative in profile.get(key, []):
+            target = (source / relative).resolve()
+            if not target.is_relative_to(source):
+                raise DevhubError(f"Profile {key} path escapes project source: {relative}")
+            if not target.is_file():
+                raise DevhubError(f"Profile {key} file is missing: {relative}")
+    for relative in profile.get("writable_paths", []):
+        target = (source / relative).resolve()
+        if not target.is_relative_to(source):
+            raise DevhubError(f"WRITE_BLOCKED: profile write path escapes project source: {relative}")
 
 
 def resolve_revision(profile: dict[str, Any], source: Path) -> dict[str, str]:
@@ -391,6 +424,7 @@ def apply_candidate(profile: dict[str, Any], source: Path, candidate: dict[str, 
 def rehydrate(project_id: str) -> dict[str, Any]:
     profile, project_dir = project_profile(project_id)
     source = resolve_source(profile)
+    validate_profile_source(profile, source)
     revision = resolve_revision(profile, source)
     current = load_current(profile, project_dir)
     if current and current["checkpoint"]["observed_head"] != revision["commit"]:

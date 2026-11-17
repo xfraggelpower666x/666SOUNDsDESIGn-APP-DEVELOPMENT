@@ -12,7 +12,7 @@
   "console_entrypoints": {"linked-demo": "linked_demo.main:main"},
   "language_files": ["pyproject.toml"],
   "build_contracts": ["pyproject.toml"],
-  "test_paths": ["test_linked_demo.py"],
+  "test_paths": ["tests/test_linked_demo.py"],
   "writable_paths": ["src", "tests", "pyproject.toml"],
   "build_commands": ["python -m pip install -e ."],
   "test_commands": ["python -m unittest discover -s tests"],
