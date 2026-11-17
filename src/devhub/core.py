@@ -4,12 +4,15 @@ import hashlib
 import json
 import os
 import re
+import shlex
 import subprocess
+import sys
 import tempfile
 import zipfile
 import tomllib
+from contextlib import contextmanager
 from datetime import datetime, timezone
-from pathlib import Path, PurePosixPath
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
 
 
@@ -154,6 +157,9 @@ def resolve_revision(profile: dict[str, Any], source: Path) -> dict[str, str]:
 
 def allowed_path(profile: dict[str, Any], source: Path, candidate: str | Path) -> Path:
     raw = Path(candidate)
+    windows_path = PureWindowsPath(str(candidate))
+    if windows_path.is_absolute() or windows_path.drive:
+        raise DevhubError(f"WRITE_BLOCKED: Windows absolute path is not a project-relative path: {candidate}")
     if raw.is_absolute():
         target = raw.resolve()
     else:
@@ -172,6 +178,23 @@ def checkpoint_file(project_dir: Path, checkpoint_id: str) -> Path:
     if not re.fullmatch(r"[a-zA-Z0-9-]+", checkpoint_id):
         raise DevhubError("Invalid checkpoint reference.")
     return project_dir / "state" / "checkpoints" / f"{checkpoint_id}.json"
+
+
+@contextmanager
+def project_lock(project_id: str):
+    lock_path = WORK / "locks" / f"{project_id}.lock"
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        descriptor = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    except FileExistsError as exc:
+        raise DevhubError(f"WRITE_BLOCKED: project lock already exists: {lock_path}") from exc
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as lock:
+            lock.write(f"pid={os.getpid()}\n")
+            lock.flush()
+        yield
+    finally:
+        lock_path.unlink(missing_ok=True)
 
 
 def make_evidence(kind: str, source: str, revision: str, environment: str, observed: str,
@@ -202,31 +225,86 @@ def checkpoint(profile: dict[str, Any], project_dir: Path, revision: str, task: 
     project_dir = project_dir.resolve()
     state_dir = project_dir / "state"
     state_dir.mkdir(parents=True, exist_ok=True)
-    checkpoint_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
-    current_path = current_file(project_dir)
-    prior = read_json(current_path) if current_path.exists() else None
-    expected_current = prior
-    payload = {
-        "schema_version": 1, "project_id": profile["id"], "checkpoint_id": checkpoint_id,
-        "task": task, "base_commit": prior.get("commit") if prior else revision,
-        "observed_head": revision, "allowed_scope": scope,
-        "return_anchor": prior.get("checkpoint_id") if prior else None,
-        "affected_files": [], "results": evidence, "open_work": open_work,
-        "created_at": utc_now(),
-    }
-    destination = checkpoint_file(project_dir, checkpoint_id)
-    atomic_json(destination, payload)
-    pointer = {"schema_version": 1, "project_id": profile["id"], "checkpoint_id": checkpoint_id,
-               "commit": revision, "updated_at": utc_now(),
-               "sha256": hashlib.sha256(destination.read_bytes()).hexdigest()}
-    # Compare-and-swap and pointer-last: a competing current is not overwritten.
-    actual = read_json(current_path) if current_path.exists() else None
-    if actual != expected_current:
-        raise DevhubError("CONFLICT_QUARANTINE: Current changed during update; checkpoint retained.")
-    atomic_json(current_path, pointer)
-    if read_json(current_path) != pointer:
-        raise DevhubError("Current readback failed.")
-    return payload
+    with project_lock(profile["id"]):
+        checkpoint_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+        current_path = current_file(project_dir)
+        prior = read_json(current_path) if current_path.exists() else None
+        payload = {
+            "schema_version": 1, "project_id": profile["id"], "checkpoint_id": checkpoint_id,
+            "task": task, "base_commit": prior.get("commit") if prior else revision,
+            "observed_head": revision, "allowed_scope": scope,
+            "return_anchor": prior.get("checkpoint_id") if prior else None,
+            "affected_files": [], "results": evidence, "open_work": open_work,
+            "created_at": utc_now(),
+        }
+        destination = checkpoint_file(project_dir, checkpoint_id)
+        atomic_json(destination, payload)
+        pointer = {"schema_version": 1, "project_id": profile["id"], "checkpoint_id": checkpoint_id,
+                   "commit": revision, "updated_at": utc_now(),
+                   "sha256": hashlib.sha256(destination.read_bytes()).hexdigest()}
+        actual = read_json(current_path) if current_path.exists() else None
+        if actual != prior:
+            raise DevhubError("CONFLICT_QUARANTINE: Current changed during update; checkpoint retained.")
+        atomic_json(current_path, pointer)
+        if read_json(current_path) != pointer:
+            raise DevhubError("Current readback failed.")
+        return payload
+
+
+def run_acceptance(profile: dict[str, Any], source: Path, revision: str) -> list[dict[str, Any]]:
+    evidence = []
+    for configured in profile.get("test_commands", []):
+        command = shlex.split(configured, posix=os.name != "nt")
+        if command and Path(command[0]).name.lower() in {"python", "python3", "python.exe"}:
+            command[0] = sys.executable
+        try:
+            result = subprocess.run(command, cwd=source, capture_output=True, text=True,
+                                    timeout=120, check=False)
+            output = (result.stdout + result.stderr).strip()
+            status = "VERIFIZIERT" if result.returncode == 0 else "BLOCKIERT"
+            observed = f"exit={result.returncode}; {output[-4000:]}"
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            status = "BLOCKIERT"
+            observed = f"{type(exc).__name__}: {exc}"
+        evidence.append(make_evidence("test", configured, revision,
+                                      f"{sys.platform}; Python {sys.version.split()[0]}",
+                                      observed, status))
+    return evidence
+
+
+def apply_candidate(profile: dict[str, Any], source: Path, candidate: dict[str, Any]) -> Path:
+    if candidate.get("project_id") != profile["id"]:
+        raise DevhubError("Candidate belongs to another project.")
+    revision = resolve_revision(profile, source)
+    if candidate.get("base_commit") != revision["commit"]:
+        raise DevhubError("Candidate base commit differs from the verified HEAD.")
+    patches = candidate.get("patches")
+    if not isinstance(patches, list) or not patches:
+        raise DevhubError("Candidate has no patch payload; no worktree was created.")
+    repo_root = Path(git(source, "rev-parse", "--show-toplevel")).resolve()
+    source_from_root = source.resolve().relative_to(repo_root)
+    worktree = WORK / "worktrees" / profile["id"] / candidate.get("candidate_id", revision["commit"][:12])
+    if worktree.exists():
+        raise DevhubError(f"WRITE_BLOCKED: candidate worktree already exists: {worktree}")
+    worktree.parent.mkdir(parents=True, exist_ok=True)
+    git(repo_root, "worktree", "add", "--detach", str(worktree), revision["commit"])
+    try:
+        for patch in patches:
+            relative = patch.get("path")
+            content = patch.get("content")
+            if not isinstance(relative, str) or not isinstance(content, str):
+                raise DevhubError("Patch entries require string path and content.")
+            allowed_path(profile, source, relative)
+            target = (worktree / source_from_root / relative).resolve()
+            if not target.is_relative_to(worktree.resolve()):
+                raise DevhubError("WRITE_BLOCKED: patch target escapes isolated worktree.")
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(content, encoding="utf-8")
+        return worktree
+    except Exception:
+        subprocess.run(["git", "-C", str(repo_root), "worktree", "remove", "--force", str(worktree)],
+                       capture_output=True, check=False)
+        raise
 
 
 def rehydrate(project_id: str) -> dict[str, Any]:
@@ -337,6 +415,27 @@ def validate_zip(archive: Path, manifest: dict[str, str]) -> list[str]:
     return errors
 
 
+def freeze_project(profile: dict[str, Any], source: Path) -> tuple[Path, dict[str, str]]:
+    source = source.resolve()
+    archive = WORK / "freezes" / profile["id"] / f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}.zip"
+    archive.parent.mkdir(parents=True, exist_ok=True)
+    manifest: dict[str, str] = {}
+    with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
+        for path in sorted(source.rglob("*")):
+            if not path.is_file() or path.is_symlink() or ".git" in path.parts:
+                continue
+            relative = path.relative_to(source).as_posix()
+            payload = path.read_bytes()
+            manifest[relative] = hashlib.sha256(payload).hexdigest()
+            bundle.writestr(relative, payload)
+        bundle.writestr("manifest.json", json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+    failures = validate_zip(archive, manifest)
+    if failures:
+        archive.unlink(missing_ok=True)
+        raise DevhubError("Freeze ZIP verification failed: " + "; ".join(failures))
+    return archive, manifest
+
+
 def dashboard_data() -> dict[str, Any]:
     projects = []
     for project_id in sorted(project_entries()):
@@ -347,7 +446,10 @@ def dashboard_data() -> dict[str, Any]:
                 **inspect_project(project_id),
                 "graph": python_graph(state["source"], profile, state["revision"]["commit"]),
                 "evidence": state["current"]["checkpoint"]["results"] if state["current"] else [],
-                "history": list((state["project_dir"] / "state" / "checkpoints").glob("*.json")),
+                "history": sorted(
+                    path.name for path in
+                    (state["project_dir"] / "state" / "checkpoints").glob("*.json")
+                ),
                 "recovery_anchor": state["current"]["checkpoint"].get("return_anchor") if state["current"] else None,
             })
         except DevhubError as exc:

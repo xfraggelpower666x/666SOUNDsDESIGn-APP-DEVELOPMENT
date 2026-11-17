@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "project_id": "demo-monorepo",
+  "base_commit": "46f6bf185ec27ec027f4f9eb95641903ef599194",
+  "recovery_anchor": "20261117T194954072386Z",
+  "scope": [
+    "src/demo_app",
+    "state"
+  ],
+  "status": "VORGESCHLAGEN",
+  "findings": [
+    {
+      "status": "ABGELEITET",
+      "finding": "The declared console entry point resolves to the tracked Python module.",
+      "source": "pyproject.toml",
+      "related_test": [
+        "tests/test_demo_app.py"
+      ]
+    }
+  ]
+}

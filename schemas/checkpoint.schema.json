@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "666DEV checkpoint",
+  "type": "object",
+  "required": ["schema_version", "project_id", "checkpoint_id", "task", "base_commit", "observed_head", "allowed_scope", "return_anchor", "affected_files", "results", "open_work", "created_at"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "project_id": {"type": "string"},
+    "checkpoint_id": {"type": "string"},
+    "task": {"type": "string"},
+    "base_commit": {"type": "string"},
+    "observed_head": {"type": "string"},
+    "allowed_scope": {"type": "array", "items": {"type": "string"}},
+    "return_anchor": {"type": ["string", "null"]},
+    "affected_files": {"type": "array", "items": {"type": "string"}},
+    "results": {"type": "array", "items": {"type": "object"}},
+    "open_work": {"type": "array", "items": {"type": "object"}},
+    "created_at": {"type": "string", "format": "date-time"}
+  },
+  "additionalProperties": true
+}

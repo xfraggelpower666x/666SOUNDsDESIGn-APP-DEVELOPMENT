@@ -7,14 +7,15 @@ import sys
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 from .core import (
-    ROOT, DevhubError, allowed_path, checkpoint, dashboard_data, inspect_project,
+    ROOT, DevhubError, allowed_path, apply_candidate, checkpoint, dashboard_data, freeze_project, inspect_project,
     make_evidence, project_entries, project_profile, python_graph, rehydrate,
+    run_acceptance,
 )
 
 HELP = """666DEV commands (parsed only from this direct invocation):
   666DEV HELP
   666DEV STATUS
-  666DEV <PROJECT-ID> SYSTEMSTART|STATUS|WEITER|CODEFORGE|SUPERCODEFORGE|VISUAL|UPDATE
+  666DEV <PROJECT-ID> SYSTEMSTART|STATUS|WEITER|CODEFORGE|SUPERCODEFORGE|VISUAL|UPDATE|FREEZE
   666DEV <PROJECT-ID> PATCH-APPLY <candidate.json>
 
 Examples:
@@ -36,6 +37,8 @@ def _checkpoint_action(project_id: str, action: str) -> dict:
         label = "Rehydration and project source verified"
     elif action in {"CODEFORGE", "SUPERCODEFORGE"}:
         graph = python_graph(state["source"], profile, commit)
+        checks = run_acceptance(profile, state["source"], commit) if action == "CODEFORGE" else []
+        evidence.extend(checks)
         if action == "SUPERCODEFORGE":
             evidence.append(make_evidence(
                 "static-graph", "project.json, Python AST", commit, "local",
@@ -44,12 +47,14 @@ def _checkpoint_action(project_id: str, action: str) -> dict:
         else:
             evidence.append(make_evidence(
                 "code-audit", str(state["source"]), commit, "local",
-                "Read-only source and declared build/test contracts analyzed",
+                "Read-only source, build contracts, and acceptance tests analyzed",
+                "VERIFIZIERT" if all(item["status"] == "VERIFIZIERT" for item in checks) else "BLOCKIERT",
             ))
         candidate = {
-            "schema_version": 1, "project_id": project_id, "base_commit": commit,
+            "schema_version": 1, "project_id": project_id, "candidate_id": f"{action.lower()}-{commit[:12]}",
+            "base_commit": commit,
             "recovery_anchor": state["current"]["pointer"]["checkpoint_id"] if state["current"] else None,
-            "scope": list(profile["writable_paths"]), "status": "VORGESCHLAGEN",
+            "scope": list(profile["writable_paths"]), "patches": [], "status": "VORGESCHLAGEN",
             "findings": [{
                 "status": "ABGELEITET",
                 "finding": "The declared console entry point resolves to the tracked Python module.",
@@ -71,6 +76,22 @@ def _checkpoint_action(project_id: str, action: str) -> dict:
         if not open_work or open_work[0].get("status") != "OFFEN":
             raise DevhubError("No valid open step exists; run CODEFORGE or SYSTEMSTART first.")
         next_step = open_work[0]
+        if next_step["step"] == "Run CodeForge analysis":
+            return _checkpoint_action(project_id, "CODEFORGE")
+        if next_step["step"] == "Review candidate and run acceptance tests":
+            checks = run_acceptance(profile, state["source"], commit)
+            evidence.extend(checks)
+            passed = all(item["status"] == "VERIFIZIERT" for item in checks)
+            open_work = [] if passed else [{"step": "Resolve failed acceptance checks",
+                                            "status": "BLOCKIERT", "depends_on": ["tests"]}]
+            evidence.append(make_evidence(
+                "re-audit", "666DEV WEITER", commit, "local",
+                "Acceptance checks passed." if passed else "Acceptance checks failed; inspect preceding test evidence.",
+                "VERIFIZIERT" if passed else "BLOCKIERT",
+            ))
+            label = "Re-audit completed" if passed else "Re-audit blocked"
+            return checkpoint(profile, project_dir, commit, label, evidence, open_work,
+                              list(profile["writable_paths"]))
         evidence.append(make_evidence(
             "workflow-step", next_step["step"], commit, "local",
             "Resolved as an explicit read-only next action.", "ABGELEITET",
@@ -132,7 +153,8 @@ def _patch_apply(project_id: str, candidate_arg: str) -> str:
         raise DevhubError("Candidate is not in proposed state.")
     for path in candidate.get("scope", []):
         allowed_path(state["profile"], state["source"], path)
-    return "Candidate scope and revision verified. This demonstration candidate has no patch payload; nothing applied."
+    worktree = apply_candidate(state["profile"], state["source"], candidate)
+    return f"Scoped patch materialized in isolated worktree: {worktree}"
 
 
 def execute(tokens: list[str]) -> str:
@@ -159,6 +181,13 @@ def execute(tokens: list[str]) -> str:
         return render_status(project_id)
     if action == "VISUAL":
         return "Run: python -m devhub.cli dashboard"
+    if action == "FREEZE":
+        state = rehydrate(project_id)
+        archive, manifest = freeze_project(state["profile"], state["source"])
+        return json.dumps({"status": "VERIFIZIERT", "archive": str(archive),
+                           "files": len(manifest), "manifest_sha256": {
+                               name: digest for name, digest in manifest.items()
+                           }}, indent=2)
     if action == "PATCH-APPLY":
         if len(normalized) != 4:
             raise DevhubError("PATCH-APPLY requires a candidate path.")

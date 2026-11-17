@@ -6,6 +6,7 @@ from unittest.mock import patch
 from devhub import core
 from devhub.cli import execute
 from devhub.core import DevhubError
+from devhub.providers import LocalGitProvider
 
 
 class DevhubTests(unittest.TestCase):
@@ -51,6 +52,51 @@ class DevhubTests(unittest.TestCase):
                 with self.assertRaisesRegex(DevhubError, "CONFLICT_QUARANTINE"):
                     core.checkpoint(profile, project, "a" * 40, "test", [], [], [])
             self.assertEqual(core.read_json(core.current_file(project)), external_pointer)
+
+    def test_acceptance_and_read_only_git_provider(self):
+        state = core.rehydrate("demo-monorepo")
+        results = core.run_acceptance(state["profile"], state["source"], state["revision"]["commit"])
+        self.assertTrue(results)
+        self.assertTrue(all(result["status"] == "VERIFIZIERT" for result in results))
+        provider = LocalGitProvider(state["source"])
+        commit = provider.read_commit(state["revision"]["commit"])
+        self.assertEqual(commit, state["revision"]["commit"])
+        self.assertIn(b"demo-app", provider.read_file(commit, "pyproject.toml"))
+        self.assertEqual(provider.read_file(commit, "pyproject.toml"),
+                         provider.read_blob(commit, "pyproject.toml"))
+
+    def test_patch_apply_uses_scoped_isolated_worktree(self):
+        state = core.rehydrate("demo-monorepo")
+        profile, source = state["profile"], state["source"]
+        original = (source / "src/demo_app/main.py").read_text(encoding="utf-8")
+        candidate = {
+            "project_id": profile["id"], "candidate_id": "test-isolated-patch",
+            "base_commit": state["revision"]["commit"],
+            "patches": [{"path": "src/demo_app/main.py", "content": original + "\n# isolated\n"}],
+        }
+        worktree = core.apply_candidate(profile, source, candidate)
+        try:
+            isolated_file = worktree / profile["source_path"] / "src/demo_app/main.py"
+            self.assertIn("# isolated", isolated_file.read_text(encoding="utf-8"))
+            self.assertEqual(original, (source / "src/demo_app/main.py").read_text(encoding="utf-8"))
+        finally:
+            repo_root = Path(core.git(source, "rev-parse", "--show-toplevel"))
+            core.git(repo_root, "worktree", "remove", "--force", str(worktree))
+
+    def test_freeze_manifest_round_trips(self):
+        state = core.rehydrate("demo-monorepo")
+        archive, manifest = core.freeze_project(state["profile"], state["source"])
+        try:
+            self.assertGreater(len(manifest), 0)
+            self.assertEqual([], core.validate_zip(archive, manifest))
+        finally:
+            archive.unlink(missing_ok=True)
+
+    def test_windows_absolute_path_is_blocked(self):
+        profile, _ = core.project_profile("demo-monorepo")
+        source = (core.ROOT / profile["source_path"]).resolve()
+        with self.assertRaisesRegex(DevhubError, "Windows absolute path"):
+            core.allowed_path(profile, source, r"C:\outside\file.py")
 
 
 if __name__ == "__main__":

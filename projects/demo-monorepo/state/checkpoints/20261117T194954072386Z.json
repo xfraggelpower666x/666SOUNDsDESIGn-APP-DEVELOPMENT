@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "project_id": "demo-monorepo",
+  "checkpoint_id": "20261117T194954072386Z",
+  "task": "Rehydration and project source verified",
+  "base_commit": "46f6bf185ec27ec027f4f9eb95641903ef599194",
+  "observed_head": "46f6bf185ec27ec027f4f9eb95641903ef599194",
+  "allowed_scope": [
+    "src/demo_app",
+    "state"
+  ],
+  "return_anchor": null,
+  "affected_files": [],
+  "results": [
+    {
+      "status": "VERIFIZIERT",
+      "evidence_type": "git",
+      "source": "/home/runner/work/666SOUNDsDESIGn-APP-DEVELOPMENT/666SOUNDsDESIGn-APP-DEVELOPMENT/projects/demo-monorepo/app",
+      "commit": "46f6bf185ec27ec027f4f9eb95641903ef599194",
+      "environment": "local",
+      "observed": "Ref HEAD resolved to HEAD"
+    }
+  ],
+  "open_work": [
+    {
+      "step": "Run CodeForge analysis",
+      "status": "OFFEN",
+      "depends_on": []
+    }
+  ],
+  "created_at": "2026-11-17T19:49:54.072431+00:00"
+}

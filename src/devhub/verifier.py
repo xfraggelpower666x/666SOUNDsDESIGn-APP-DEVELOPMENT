@@ -6,6 +6,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from pathlib import PureWindowsPath
 
 from .core import (
     ROOT, DevhubError, ID_RE, checkpoint_file, project_entries, project_profile,
@@ -35,11 +36,15 @@ def verify(base: str | None = None) -> dict:
                     source = (ROOT / profile["source_path"]).resolve()
                     if not source.is_relative_to(ROOT.resolve()):
                         errors.append(f"{project_id}: source path escapes repository")
-                    for relative in profile.get("language_files", []) + profile.get("build_contracts", []):
+                    references = (profile.get("language_files", []) + profile.get("build_contracts", [])
+                                  + profile.get("test_paths", []))
+                    for relative in references:
                         if not (source / relative).is_file():
                             errors.append(f"{project_id}: missing referenced file {relative}")
                     for writable in profile.get("writable_paths", []):
-                        if not (source / writable).resolve().is_relative_to(source):
+                        if PureWindowsPath(writable).is_absolute() or PureWindowsPath(writable).drive:
+                            errors.append(f"{project_id}: Windows absolute writable path {writable}")
+                        elif not (source / writable).resolve().is_relative_to(source):
                             errors.append(f"{project_id}: writable path escapes source")
                 state = project_dir / "state"
                 current_path = state / "current.json"
@@ -54,6 +59,15 @@ def verify(base: str | None = None) -> dict:
                         errors.append(f"{project_id}: checkpoint project mismatch")
                     if not checkpoint.get("results"):
                         errors.append(f"{project_id}: checkpoint has no evidence")
+                    for result in checkpoint.get("results", []):
+                        if result.get("status") not in {
+                            "VERIFIZIERT", "ABGELEITET", "VORGESCHLAGEN", "OFFEN", "BLOCKIERT",
+                            "PARTIAL", "WRITE_BLOCKED", "READBACK_PENDING", "CONFLICT_QUARANTINE",
+                        }:
+                            errors.append(f"{project_id}: invalid evidence status {result.get('status')}")
+                        if not all(result.get(field) for field in
+                                   ("evidence_type", "source", "commit", "environment", "observed")):
+                            errors.append(f"{project_id}: incomplete evidence record")
             except (DevhubError, KeyError, TypeError) as exc:
                 errors.append(f"{project_id}: {exc}")
         if base:
@@ -74,7 +88,7 @@ def verify(base: str | None = None) -> dict:
                         if name.startswith(".work/"):
                             errors.append(f"Scope diff includes ignored work area: {name}")
         return {
-            "status": "VERIFIZIERT" if not errors else "BLOCKIERT",
+            "status": ("BLOCKIERT" if errors else "VERIFIZIERT" if base else "PARTIAL"),
             "diff_base": base or "UNSPECIFIED (working tree only)",
             "projects_checked": checked,
             "required_sources": {"registry": "VERIFIZIERT", "diff_base": "VERIFIZIERT" if base else "PARTIAL"},
