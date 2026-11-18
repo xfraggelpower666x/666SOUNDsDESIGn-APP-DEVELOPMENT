@@ -13,6 +13,7 @@
     <nav aria-label="Ansicht">
       <button data-view="controls" aria-pressed="true">Steuerung</button>
       <button data-view="dashboard" aria-pressed="false">Dashboard</button>
+      <button data-view="livecircle" aria-pressed="false">LiveCircle</button>
       <button data-view="settings" aria-pressed="false">Einstellungen</button>
     </nav>
   </header>
@@ -47,6 +48,17 @@
     </section>
     <section data-panel="dashboard" class="pane dashboard" hidden>
       <iframe title="666DEV Projekt-Dashboard" id="dashboard-frame"></iframe>
+    </section>
+    <section data-panel="livecircle" class="pane" hidden>
+      <h2>LiveCircle</h2>
+      <p id="livecircle-project"></p>
+      <div class="actions">
+        <button id="rehydrate">Stand abgleichen</button>
+        <button id="export-handoff">Handoff exportieren</button>
+        <label for="import-handoff">Handoff zum Abgleich auswählen</label>
+        <input id="import-handoff" type="file" accept=".json,application/json">
+      </div>
+      <pre id="livecircle-output" tabindex="0" aria-live="polite"></pre>
     </section>
     <section data-panel="settings" class="pane settings" hidden>
       <form id="settings-form">

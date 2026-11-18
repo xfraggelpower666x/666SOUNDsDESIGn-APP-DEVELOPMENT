@@ -24,6 +24,8 @@ for verification. Windows users can substitute `py -m` for `python -m`.
 
 ## Project lifecycle
 
+[666DEV LiveCircle](docs/livecircle.md) für Wiederaufnahme in Repo, ChatGPT, Plugin und Windows.
+
 ```sh
 python -m devhub.cli 666DEV demo-monorepo SYSTEMSTART
 python -m devhub.cli 666DEV demo-monorepo CODEFORGE

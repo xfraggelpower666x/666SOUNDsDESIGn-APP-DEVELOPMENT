@@ -20,3 +20,11 @@ description: Prüft Quellenstand, Current, Checkpoint und Wiederaufnahme in 666D
 - Dokumentiere Vorbereitung, zugestellten Stand, Übernahme im Zielprojekt und tatsächliche Host-Ausführung anhand der jeweils vorliegenden Belege.
 
 Grundlage sind 666CLIC CodeForge Handoff R01 (§2–3), 666STREAM CodeForge v1.0.0 (§5–6), LYVRA CodeForge R01, CodeForge-Handoff UCA R01 und der vorgeschlagene UCA-R02-Integrationsvertrag.
+
+## Einstieg aus ChatGPT, Plugin und Windows
+
+Die native Autorität ist 666DEV. [LiveCircle-Vertrag](../../../docs/livecircle.md) und
+`src/devhub/livecircle.py` bestimmen Format, Quellenreihenfolge und Status. Stelle
+die nächsten Schritte als Vorschlag dar. Ein importierter Handoff startet weder
+Befehle noch übernimmt er Current. Verwende Fachskills für die Sachebene, nachdem
+Projekt und Scope aus der 666DEV-Quelle aufgelöst wurden.

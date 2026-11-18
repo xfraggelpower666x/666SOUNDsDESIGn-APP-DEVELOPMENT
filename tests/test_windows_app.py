@@ -58,6 +58,18 @@ class WindowsAppTest(unittest.TestCase):
         self.assertEqual(status, 400)
         self.assertIn("bestätigt", json.loads(result)["error"])
 
+    def test_livecircle_shares_native_result(self):
+        _, headers = self.session()
+        data = {"project": "demo-monorepo"}
+        self.assertEqual(self.request("/api/livecircle", data)[0], 403)
+        status, result = self.request("/api/livecircle", data, **headers)
+        self.assertEqual(status, 200)
+        handoff = json.loads(result)
+        self.assertEqual(handoff, app.snapshot(data["project"]))
+        status, result = self.request("/api/livecircle", {**data, "handoff": handoff}, **headers)
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(result)["livecircle"], handoff)
+
     def test_settings_and_token_are_separate(self):
         _, headers = self.session()
         saved = {"repository": "example/dev", "ref": "feature/release", "base": "main"}

@@ -13,3 +13,8 @@ Die lokalen Entwicklungsbefehle verwenden den Checkout, aus dem die App gestarte
 Die Steuerung bindet an `http://127.0.0.1:8767`. Der Domain-Zugang verwendet weiter das separate [lesende Dashboard](../dashboard/README.md) auf Port 8766. Beim Einrichten des Tunnels muss das Ziel auf Port 8766 bleiben.
 
 Zum Start ohne Fenster kann aus der Repo-Wurzel `py -3 windows-app\app.py --no-window` verwendet werden.
+
+Über **LiveCircle** lässt sich der belegte Projektstand abgleichen. **Handoff
+exportieren** speichert das portable JSON für einen anderen Host. Beim Einlesen
+wird die Datei gegen die nativen Quellen geprüft. Details stehen im
+[LiveCircle-Vertrag](../docs/livecircle.md).

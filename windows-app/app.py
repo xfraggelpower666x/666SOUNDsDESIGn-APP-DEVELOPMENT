@@ -22,6 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from devhub.core import DevhubError, atomic_json, dashboard_data, project_entries, read_json
+from devhub.livecircle import resume, snapshot
 
 UI = Path(__file__).resolve().parent / "ui"
 CONFIG = ROOT / ".work" / "windows-app" / "settings.json"
@@ -172,6 +173,12 @@ class Handler(BaseHTTPRequestHandler):
                 self.json(200, config)
             elif route == "/api/github":
                 self.json(200, github_probe(data))
+            elif route == "/api/livecircle":
+                project = data.get("project")
+                if not isinstance(project, str) or project not in project_entries():
+                    raise ValueError("Unbekanntes Projekt.")
+                report = resume(project, data["handoff"]) if "handoff" in data else snapshot(project)
+                self.json(200, report)
             elif route == "/api/action":
                 with self.server.operation:
                     self.json(200, run_action(data))
