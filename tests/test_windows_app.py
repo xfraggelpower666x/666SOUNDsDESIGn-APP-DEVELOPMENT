@@ -66,6 +66,12 @@ class WindowsAppTest(unittest.TestCase):
         self.assertEqual(status, 200)
         handoff = json.loads(result)
         self.assertEqual(handoff, app.snapshot(data["project"]))
+        status, explicit = self.request("/api/livecircle", {**data, "desktop_base": "HEAD"}, **headers)
+        self.assertEqual(200, status)
+        windows = json.loads(explicit)["desktop_impact"]
+        self.assertEqual("EXPLICIT", windows["basis"])
+        self.assertEqual(handoff["hub_commit"], windows["base"])
+        self.assertEqual("OFFEN", windows["windows_acceptance"])
         status, result = self.request("/api/livecircle", {**data, "handoff": handoff}, **headers)
         self.assertEqual(status, 200)
         self.assertEqual(json.loads(result)["livecircle"], handoff)

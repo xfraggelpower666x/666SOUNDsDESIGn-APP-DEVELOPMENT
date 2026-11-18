@@ -38,3 +38,9 @@ Die native Autorität ist 666DEV. [LiveCircle-Vertrag](../../../docs/livecircle.
 die nächsten Schritte als Vorschlag dar. Ein importierter Handoff startet weder
 Befehle noch übernimmt er Current. Verwende Fachskills für die Sachebene, nachdem
 Projekt und Scope aus der 666DEV-Quelle aufgelöst wurden.
+
+Bei Änderungen am 666DEV-Live-System gehört der
+[Windows-Abgleich](../../../docs/livecircle.md#pflichtabgleich-mit-der-windows-anwendung)
+zum Start, zur Wiederaufnahme und zum Update. Nenne die geprüfte Basis, die
+betroffenen PC-Funktionen und ob Abgleich, Anpassung oder Windows-Abnahme
+ansteht. Verwende die zuletzt belegte PC-Revision, wenn sie vorliegt.

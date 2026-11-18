@@ -3,15 +3,17 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 
 from . import core
+from .desktop_impact import desktop_impact
 
 KIND = "666dev-livecircle"
 VERSION = 1
 ACTIONS = ("LIVECIRCLE", "REHYDRATE", "NEW-CHAT", "NEXT-CHAT")
 
 
-def snapshot(project_id: str) -> dict:
+def snapshot(project_id: str, *, desktop_base: str | None = None) -> dict:
     profile, _ = core.project_profile(project_id)
     record = {
         "kind": KIND,
@@ -30,6 +32,7 @@ def snapshot(project_id: str) -> dict:
         "next_action": None,
         "status": "READBACK_PENDING",
     }
+    record["desktop_impact"] = desktop_impact(core.ROOT, record["hub_commit"], desktop_base)
     try:
         state = core.rehydrate(project_id, initialize_demo=False)
     except core.DevhubError as exc:
@@ -69,6 +72,10 @@ def resume(project_id: str, handoff: dict, *, observed: dict | None = None) -> d
     if handoff.get("authority") != "666DEV" or handoff.get("project_id") != project_id:
         return {"status": "CONFLICT_QUARANTINE", "reason": "Projekt oder Autorität stimmt nicht überein."}
     current = snapshot(project_id) if observed is None else observed
+    old_hub = handoff.get("hub_commit")
+    if (current["desktop_impact"]["basis"] == "FIRST_PARENT" and isinstance(old_hub, str)
+            and re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", old_hub) and old_hub != current["hub_commit"]):
+        current = {**current, "desktop_impact": desktop_impact(core.ROOT, current["hub_commit"], old_hub)}
     if current["status"] in {"READBACK_PENDING", "CONFLICT_QUARANTINE"}:
         return {"status": current["status"], "livecircle": current}
     keys = ("hub_commit", "profile_path", "profile_sha256", "source_mode", "source_commit", "working", "current", "return_anchor")
@@ -81,11 +88,13 @@ def resume(project_id: str, handoff: dict, *, observed: dict | None = None) -> d
 def hub_entry(*, update: bool = False) -> dict:
     """Read the hub registry without selecting a project or creating a checkpoint."""
     action = "UPDATE" if update else "SYSTEMSTART"
+    head = core.git(core.ROOT, "rev-parse", "--verify", "HEAD^{commit}")
     return {
         "authority": "666DEV",
         "action": action,
         "status": "PROJECT_SELECTION_REQUIRED" if update else "PARTIAL",
-        "hub_commit": core.git(core.ROOT, "rev-parse", "--verify", "HEAD^{commit}"),
+        "hub_commit": head,
+        "desktop_impact": desktop_impact(core.ROOT, head),
         "project_id": None,
         "projects": sorted(core.project_entries()),
         "project_status": "OFFEN",

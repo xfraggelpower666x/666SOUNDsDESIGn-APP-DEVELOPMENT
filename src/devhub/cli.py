@@ -17,6 +17,7 @@ HELP = """666DEV commands (parsed only from this direct invocation):
   666DEV HELP
   666DEV STATUS
   666DEV SYSTEMSTART | UPDATE | FUCK HORST
+  666DEV DESKTOP-IMPACT [BASE]
   666DEV REPO-MIND CHECK [RENAME-BASE] | INDEX | PR <RENAME-BASE> <TARGET-BRANCH>
   666DEV <PROJECT-ID> FUCK HORST [handoff.json]
   666DEV <PROJECT-ID> SYSTEMSTART|STATUS|WEITER|CODEFORGE|SUPERCODEFORGE|VISUAL|UPDATE|FREEZE
@@ -311,6 +312,14 @@ def execute(tokens: list[str]) -> str:
         raise DevhubError("A namespace-qualified 666DEV command is required. Try 666DEV HELP.")
     if len(normalized) == 1 or normalized[1] == "HELP":
         return HELP
+    if normalized[1] == "DESKTOP-IMPACT":
+        from .desktop_impact import desktop_impact
+
+        if len(tokens) > 3:
+            raise DevhubError("DESKTOP-IMPACT erwartet höchstens eine Git-Prüfbasis.")
+        head = git(ROOT, "rev-parse", "--verify", "HEAD^{commit}")
+        return json.dumps(desktop_impact(ROOT, head, tokens[2] if len(tokens) == 3 else None),
+                          indent=2, ensure_ascii=False)
     if normalized[1] == "REPO-MIND":
         from .repo_mind import publish, refresh_index, scan
 
@@ -395,6 +404,13 @@ def execute(tokens: list[str]) -> str:
         return _patch_apply(project_id, normalized[3])
     if action not in {"SYSTEMSTART", "WEITER", "CODEFORGE", "SUPERCODEFORGE", "BUILD", "UPDATE"}:
         raise DevhubError(f"Unknown action {action}. Try 666DEV HELP.")
+    if action in {"SYSTEMSTART", "UPDATE"}:
+        from .desktop_impact import desktop_impact
+
+        head = git(ROOT, "rev-parse", "--verify", "HEAD^{commit}")
+        companion = desktop_impact(ROOT, head)
+        result = _checkpoint_action(project_id, action)
+        return json.dumps({**result, "desktop_impact": companion}, indent=2, ensure_ascii=False)
     return json.dumps(_checkpoint_action(project_id, action), indent=2)
 
 

@@ -8,6 +8,7 @@ from .core import (
     ROOT, STATUSES, DevhubError, ID_RE, git, load_current, project_entries, project_profile, rehydrate,
 )
 
+from .desktop_impact import desktop_impact
 from .impact import project_impact
 from .providers import git_bytes
 
@@ -98,6 +99,8 @@ def verify(base: str | None = None) -> dict:
             "required_sources": {"registry": "VERIFIZIERT", "diff_base": "VERIFIZIERT" if resolved_base else "PARTIAL"},
             "changed_files": changed_files,
             "project_impacts": impacts,
+            "desktop_impact": desktop_impact(ROOT, git(ROOT, "rev-parse", "--verify", "HEAD^{commit}"),
+                                             resolved_base or base),
             "errors": errors,
             "skipped": [] if base else ["Commit-to-HEAD diff comparison: no base supplied"],
         }

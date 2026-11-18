@@ -117,12 +117,22 @@ async function refreshCircle({handoff, download = false} = {}) {
   const project = get("project").value;
   if (!csrf || !project) return;
   const panel = get("livecircle-output");
+  get("desktop-impact-status").textContent = "";
   get("livecircle-project").textContent = project;
   try {
     const data = handoff === undefined ? {project} : {project, handoff};
+    const desktopBase = get("desktop-base").value.trim();
+    if (desktopBase) data.desktop_base = desktopBase;
     const snapshot = await request("/api/livecircle", data);
     const result = JSON.stringify(snapshot, null, 2);
     panel.textContent = result;
+    const impact = (snapshot.livecircle || snapshot).desktop_impact;
+    const desktopMessages = {
+      WINDOWS_REVIEW_REQUIRED: "Windows-App prüfen. Die betroffenen Funktionen stehen im Bericht.",
+      NO_IMPACT_IN_DIFF: "Im verglichenen Git-Bereich ist keine Windows-Auswirkung erkennbar.",
+      READBACK_PENDING: "Windows-Abgleich offen. Eine belegte Git-Referenz angeben.",
+    };
+    get("desktop-impact-status").textContent = desktopMessages[impact?.status] || "";
     if (download) {
       downloadText(result, `666dev-${project}-handoff.json`, "application/json");
     }

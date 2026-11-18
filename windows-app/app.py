@@ -203,7 +203,11 @@ class Handler(BaseHTTPRequestHandler):
                 project = data.get("project")
                 if not isinstance(project, str) or project not in project_entries():
                     raise ValueError("Unbekanntes Projekt.")
-                report = resume(project, data["handoff"]) if "handoff" in data else snapshot(project)
+                base = data.get("desktop_base")
+                if base is not None:
+                    base = valid_ref(base)
+                current = snapshot(project, desktop_base=base)
+                report = resume(project, data["handoff"], observed=current) if "handoff" in data else current
                 self.json(200, report)
             elif route == "/api/repo-mind":
                 with self.server.operation:

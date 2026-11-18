@@ -111,3 +111,39 @@ Bei Chatwechsel den JSON-Handoff aus Windows oder der CLI ausdrücklich in den
 neuen Chat mitnehmen. Blockierte Wiederaufnahme bleibt offen. Eine zugleich
 übergebene Datei oder frühere Befehlszeile führt keine Aktion aus. Kostenpflichtige
 APIs und ein zusätzlicher Server sind für diesen Ablauf nicht erforderlich.
+
+## Pflichtabgleich mit der Windows-Anwendung
+
+Bei `SYSTEMSTART`, Wiederaufnahme und `UPDATE` gehört der Abgleich mit
+**666DEV Windows Control** zum LiveCircle-Bericht. Die Windows-App verwendet
+die CLI, den LiveCircle, Repo Mind und das eingebettete Dashboard aus demselben
+Repository. Änderungen an diesen Schnittstellen, am Projektschema, an der
+Registry oder am Windows-Launcher lösen eine PC-Prüfung aus.
+
+Verwende bevorzugt die Git-Revision der zuletzt abgenommenen oder installierten
+PC-Anwendung. Vergleiche bei einer Wiederaufnahme sonst die frühere Hub-Revision
+aus dem passenden Handoff. Als lokaler Einstieg dient der erste Git-Vorgänger.
+Der Verifier verwendet die angegebene Vergleichsbasis, in der CI also die
+PR-Basis. Der Bericht benennt beide Revisionsgrenzen. Eine fehlende oder
+nicht passende Basis muss als offen ausgewiesen werden.
+
+| Status | Nächste Entscheidung |
+| --- | --- |
+| `WINDOWS_REVIEW_REQUIRED` | Betroffene Funktionen der PC-App überprüfen. Bei geänderten Verträgen die Anwendung anpassen und erneut abnehmen. Bereits geänderte Windows-Dateien zählen als Änderungsbeleg, die Abnahme bleibt gesondert. |
+| `NO_IMPACT_IN_DIFF` | Im geprüften Revisionsbereich ist anhand der deklarierten Schnittstellen kein App-Update angezeigt. |
+| `READBACK_PENDING` | Vergleichsbasis beschaffen und den Abgleich erneut ausführen. |
+
+Prüfe je nach Befund den Windows-Start mit `START_666DEV_WINDOWS.cmd`, den
+betroffenen Bildschirm und dessen Schnittstelle zum Kern. Bei Änderungen an
+LiveCircle oder Repo Mind gehören Handoff-Import/-Export oder Review-Freigabe
+zur passenden Funktionsprobe. Die Ausgabe des Abgleichs führt die tatsächliche
+Windows-Abnahme als offen. Der Befund ist lesend und aktualisiert weder eine
+Installation noch den Projekt-Pointer.
+
+```powershell
+py -m devhub.cli 666DEV DESKTOP-IMPACT <commit-der-pc-app>
+```
+
+Der Abgleich bezieht sich auf die Hub-Anwendung 666DEV Windows Control. Für
+weitere PC-Anwendungen eines registrierten Projekts ist deren Zuordnung und
+eigener Abnahmevertrag erforderlich.

@@ -36,3 +36,8 @@ benötigt GitHub CLI mit Schreibzugriff sowie einen Zielbranch auf dem geprüfte
 Diese Integration verwendet den lokalen Git-Pfad des Desktop-Pakets.
 Der separate modellgestützte Job-/Refine-Dienst und seine SQLite-Datenbank bleiben
 Funktionen von Repo Mind Desktop v0.3.1.
+
+Im Tab **LiveCircle** zeigt der Windows-Abgleich betroffene PC-Funktionen.
+Für den vollständigen Vergleich seit deiner Installation gib die letzte
+belegte PC-Revision ein und wähle **Stand abgleichen**. Details stehen im
+[LiveCircle-Vertrag](../docs/livecircle.md#pflichtabgleich-mit-der-windows-anwendung).
