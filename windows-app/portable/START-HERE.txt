@@ -1,0 +1,30 @@
+666DEV Windows Control — Windows x64
+666SOUNDsDESIGn / FRAGGLEPOWER666
+
+1. Entpacke das gesamte ZIP in einen Ordner mit Schreibrechten.
+2. Öffne STARTEN.bat und wähle [1] Start 666DEV.
+3. Öffne Repo Mind > Chat-Archiv für lokale ChatGPT- und AI-Exporter-Importe.
+
+Die Konsole offen lassen. Strg+C beendet die Anwendung.
+666DEV nutzt den Edge-App-Modus, wenn Edge verfügbar ist. Andernfalls
+öffnet der vorhandene Launcher die Oberfläche im Standardbrowser.
+
+Direktstart: 666DEV.exe oder .\STARTEN.bat --run
+Prüfung: .\STARTEN.bat --check
+Diagnose mit Protokoll: .\STARTEN.bat --diagnose
+Protokolle: checkout\.work\windows-app\logs
+Komponenten, Daten und Wiederaufbau: ARCHITEKTUR.md
+Das Paket enthält Python, MinGit, GitHub CLI und den 666DEV-Checkout.
+Für GitHub-Aktionen mit Schreibzugriff ist eine eigene gh-Anmeldung nötig.
+Der lokale Stand liegt in checkout\.work. Sichere diesen Ordner, wenn du
+ein neues Paket daneben entpackst und vorhandene Daten übernehmen willst.
+Merge- oder Installationszustände bei GitHub werden vom Start nicht geändert.
+
+Drittanbieter
+CPython: https://www.python.org/ und runtime\python\LICENSE.txt
+Git for Windows: Upstream-Binaries mit ihren Lizenzdateien in runtime\git.
+Quellcode und korrespondierende Veröffentlichungen:
+https://github.com/git-for-windows/git/releases/tag/v2.56.1.windows.1
+https://github.com/git-for-windows/build-extra
+GitHub CLI: https://github.com/cli/cli/releases/tag/v2.105.0
+Go-Launcher: GO-LICENSE.txt und GO-PATENTS.txt.

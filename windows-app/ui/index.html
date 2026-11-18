@@ -76,35 +76,57 @@
       <p id="livecircle-acceptance" role="status"></p>
       <pre id="livecircle-output" tabindex="0" aria-live="polite"></pre>
     </section>
-    <section data-panel="repo-mind" class="pane" hidden>
+    <section data-panel="repo-mind" class="pane repo-mind" hidden>
       <h2>666REPO-MIND</h2>
-      <div class="mind-layout">
-        <form id="mind-context">
-          <h3>Quellkontext</h3>
-          <label for="mind-instruction">Frage oder Stichworte zur Dateiauswahl</label>
-          <input id="mind-instruction" maxlength="1000" placeholder="z. B. Start, LiveCircle, GitHub">
-          <label for="mind-paths">Dateipfade, optional und je einer pro Zeile</label>
-          <textarea id="mind-paths" rows="3" maxlength="2407"></textarea>
-          <button type="submit">Quellkontext prüfen</button>
-        </form>
-        <form id="mind-review">
-          <h3>Repo-Ordnung und Link-Review</h3>
-          <label for="mind-base">Git-Basis mit den ursprünglichen Linkzielen</label>
-          <input id="mind-base" placeholder="Optional für die Prüfung, nötig für Korrekturen" spellcheck="false">
-          <label for="mind-target">Zielbranch auf GitHub</label>
-          <input id="mind-target" required spellcheck="false">
-          <div class="actions">
-            <button type="submit">Ordnung prüfen</button>
-            <button type="button" id="mind-index">Index neu erzeugen</button>
-            <button type="button" id="mind-download" disabled>Diff speichern</button>
-            <button type="button" id="mind-publish" class="accent" disabled>Draft-PR freigeben</button>
-          </div>
-        </form>
+      <nav aria-label="Repo Mind">
+        <button type="button" data-mind-view="repository" aria-controls="mind-repository" aria-pressed="true">Repo-Analyse</button>
+        <button type="button" data-mind-view="chat-archive" aria-controls="mind-chat-archive" aria-pressed="false">Chat-Archiv</button>
+      </nav>
+      <div id="mind-repository" data-mind-panel="repository">
+        <div class="mind-layout">
+          <form id="mind-context">
+            <h3>Quellkontext</h3>
+            <label for="mind-instruction">Frage oder Stichworte zur Dateiauswahl</label>
+            <input id="mind-instruction" maxlength="1000" placeholder="z. B. Start, LiveCircle, GitHub">
+            <label for="mind-paths">Dateipfade, optional und je einer pro Zeile</label>
+            <textarea id="mind-paths" rows="3" maxlength="2407"></textarea>
+            <button type="submit">Quellkontext prüfen</button>
+          </form>
+          <form id="mind-review">
+            <h3>Repo-Ordnung und Link-Review</h3>
+            <label for="mind-base">Git-Basis mit den ursprünglichen Linkzielen</label>
+            <input id="mind-base" placeholder="Optional für die Prüfung, nötig für Korrekturen" spellcheck="false">
+            <label for="mind-target">Zielbranch auf GitHub</label>
+            <input id="mind-target" required spellcheck="false">
+            <div class="actions">
+              <button type="submit">Ordnung prüfen</button>
+              <button type="button" id="mind-index">Index neu erzeugen</button>
+              <button type="button" id="mind-download" disabled>Diff speichern</button>
+              <button type="button" id="mind-publish" class="accent" disabled>Draft-PR freigeben</button>
+            </div>
+          </form>
+        </div>
+        <p id="mind-status" role="status"></p>
+        <pre id="mind-output" tabindex="0">Aktion auswählen.</pre>
+        <h3 id="mind-diff-heading" hidden>Geprüfter Diff</h3>
+        <pre id="mind-diff" tabindex="0" hidden></pre>
       </div>
-      <p id="mind-status" role="status"></p>
-      <pre id="mind-output" tabindex="0">Aktion auswählen.</pre>
-      <h3 id="mind-diff-heading" hidden>Geprüfter Diff</h3>
-      <pre id="mind-diff" tabindex="0" hidden></pre>
+      <div id="mind-chat-archive" data-mind-panel="chat-archive" hidden>
+        <div class="mind-layout">
+          <form id="chat-import">
+            <label for="chat-path">Vollständiger Pfad zum lokalen Chat-Export (.zip oder .json)</label>
+            <input id="chat-path" required maxlength="2048" autocomplete="off" spellcheck="false" placeholder="C:\Users\…\Downloads\chat-export.zip">
+            <button type="submit">Importieren</button>
+          </form>
+          <form id="chat-search">
+            <label for="chat-query">Titel und Nachrichten durchsuchen</label>
+            <input id="chat-query" type="search" maxlength="500" autocomplete="off">
+            <button type="submit">Suchen</button>
+          </form>
+        </div>
+        <p id="chat-status" role="status"></p>
+        <ol id="chat-results"></ol>
+      </div>
     </section>
     <section data-panel="settings" class="pane settings" hidden>
       <form id="settings-form">

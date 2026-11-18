@@ -14,6 +14,7 @@ CONTRACTS = (
     ("src/devhub/recovery.py", "Wiederaufnahme und Projektprüfung im LiveCircle"),
     ("src/devhub/desktop_impact.py", "Windows-Abgleich im LiveCircle"),
     ("src/devhub/repo_mind.py", "Repo-Mind-Ansicht und Freigabe"),
+    ("src/devhub/chat_archive.py", "Import, Suche und Export im lokalen Chat-Archiv"),
     ("src/devhub/repo_mind_context.py", "Repo-Mind-Quellkontext"),
     ("src/devhub/", "Gemeinsamer Python-Kern"),
     ("registry/", "Projektwahl und Repo-Mind-Regeln"),

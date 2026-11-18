@@ -19,6 +19,7 @@ HELP = """666DEV commands (parsed only from this direct invocation):
   666DEV SYSTEMSTART | UPDATE | FUCK HORST
   666DEV DESKTOP-IMPACT [BASE]
   666DEV REPO-MIND CHECK [RENAME-BASE] | INDEX | PR <RENAME-BASE> <TARGET-BRANCH>
+  666DEV CHAT-ARCHIVE IMPORT <export.zip|export.json> | SEARCH [QUERY] | EXPORT <KEY>
   666DEV <PROJECT-ID> FUCK HORST [handoff.json]
   666DEV <PROJECT-ID> SYSTEMSTART|STATUS|WEITER|CODEFORGE|SUPERCODEFORGE|VISUAL|UPDATE|FREEZE
   666DEV <PROJECT-ID> CONTEXT|BUILD
@@ -197,6 +198,8 @@ def _checkpoint_action(project_id: str, action: str) -> dict:
 
 
 def render_status(project_id: str | None = None) -> str:
+    from .livecircle import snapshot
+
     ids = [project_id] if project_id else sorted(project_entries())
     lines = []
     for selected in ids:
@@ -331,6 +334,20 @@ def execute(tokens: list[str]) -> str:
         head = git(ROOT, "rev-parse", "--verify", "HEAD^{commit}")
         return json.dumps(desktop_impact(ROOT, head, tokens[2] if len(tokens) == 3 else None),
                           indent=2, ensure_ascii=False)
+    if normalized[1] == "CHAT-ARCHIVE":
+        from .chat_archive import export_markdown, import_archive, search_archive
+
+        args = tokens[3:]
+        action = normalized[2] if len(tokens) > 2 else "SEARCH"
+        if action == "IMPORT" and len(args) == 1:
+            report = import_archive(ROOT, Path(args[0]))
+        elif action == "SEARCH" and len(args) <= 1:
+            report = search_archive(ROOT, *args)
+        elif action == "EXPORT" and len(args) == 1:
+            return export_markdown(ROOT, args[0])
+        else:
+            raise DevhubError("Use 666DEV CHAT-ARCHIVE IMPORT <file>, SEARCH [query] or EXPORT <key>.")
+        return json.dumps(report, indent=2, ensure_ascii=False)
     if normalized[1] == "REPO-MIND":
         from .repo_mind import publish, refresh_index, scan
 

@@ -27,6 +27,11 @@ for verification. Windows users can substitute `py -m` for `python -m`.
 Repo-Ordnung und interne Markdown-Links mit `666DEV REPO-MIND CHECK` prüfen.
 [Regeln, Index und separater Korrektur-PR](docs/repo-mind.md).
 
+## Chat-Archiv
+
+ChatGPT-Datenexporte und AI-Exporter-Dateien lokal einlesen, durchsuchen und als
+Markdown-Referenz ausgeben. [Anleitung für CLI und Windows Control](docs/chat-archive.md).
+
 ## Project lifecycle
 
 [666DEV LiveCircle](docs/livecircle.md) für Wiederaufnahme in Repo, ChatGPT, Plugin und Windows.

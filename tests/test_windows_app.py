@@ -56,6 +56,11 @@ class WindowsAppTest(unittest.TestCase):
         status, result = self.request("/api/action", {"action": "GIT"}, **headers)
         self.assertEqual(status, 200)
         self.assertEqual(json.loads(result)["exit_code"], 0)
+        status, result = self.request("/api/action", {"action": "STATUS", "project": "demo-monorepo"}, **headers)
+        self.assertEqual(status, 200)
+        project_status = json.loads(result)
+        self.assertEqual(project_status["exit_code"], 0, project_status["stderr"])
+        self.assertIn("demo-monorepo:", project_status["stdout"])
         status, result = self.request("/api/action", {"action": "UPDATE", "project": state["projects"][0]}, **headers)
         self.assertEqual(status, 400)
         self.assertIn("bestätigt", json.loads(result)["error"])
@@ -83,6 +88,34 @@ class WindowsAppTest(unittest.TestCase):
         status, empty = self.request("/visualforms/")
         self.assertEqual(200, status)
         self.assertIn("Projektquelle offen", empty.decode())
+
+    def test_chat_archive_requires_local_session_and_shares_the_core_index(self):
+        _, headers = self.session()
+        _, html = self.request("/")
+        self.assertNotIn(b'data-view="chat-archive"', html)
+        _, _, body = html.partition(b'<section data-panel="repo-mind"')
+        repo_mind = body.partition(b"</section>")[0]
+        self.assertIn(b'data-mind-view="chat-archive" aria-controls="mind-chat-archive"', repo_mind)
+        self.assertIn(b'id="mind-chat-archive" data-mind-panel="chat-archive" hidden', repo_mind)
+        self.assertIn(b'id="chat-import"', repo_mind)
+        route = "/api/chat-archive"
+        self.assertEqual(403, self.request(route, {"action": "SEARCH"})[0])
+        scope = self.config.parent
+        source = scope / "local-export.json"
+        source.write_text(json.dumps({
+            "object": "chatgpt.export",
+            "data": [{"id": "test-1", "title": "Test",
+                      "messages": [{"role": "user", "content": "Lokaler Suchbeleg"}]}],
+        }), encoding="utf-8")
+        with patch.object(app, "ROOT", scope):
+            self.assertEqual(400, self.request(route, {"action": "IMPORT", "path": source.name}, **headers)[0])
+            status, body = self.request(route, {"action": "IMPORT", "path": str(source)}, **headers)
+            self.assertEqual(200, status)
+            self.assertEqual(1, json.loads(body)["added"])
+            key = app.search_archive(scope, "suchbeleg")["results"][0]["key"]
+            status, body = self.request(route, {"action": "EXPORT", "key": key}, **headers)
+            self.assertEqual(200, status)
+            self.assertIn("Lokaler Suchbeleg", json.loads(body)["markdown"])
 
     def test_visual_handoff_binds_the_form_to_the_native_revision(self):
         project = "demo-monorepo"

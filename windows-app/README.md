@@ -1,5 +1,33 @@
 # 666DEV Windows Control
 
+## Portable Windows-x64-Ausgabe
+
+`666DEV-Windows-x64.zip` vollständig entpacken und **STARTEN.bat** öffnen.
+Im Menü **1** für den Start wählen. **666DEV.exe** ist der direkte Einstieg.
+Das Paket enthält den Git-Checkout, Python, MinGit und die GitHub CLI. Für
+die lokale Nutzung werden keine vorhandenen Python- oder Git-Installationen
+benötigt. Für GitHub-Schreibaktionen bleibt eine eigene CLI-Anmeldung erforderlich.
+Die Anwendung verwendet die gewohnte lokale Oberfläche im Edge-App-Modus.
+
+In PowerShell prüft `.\STARTEN.bat --check` den portablen Startpfad und die Revision.
+`.\STARTEN.bat --diagnose` schreibt ein Protokoll unter
+`checkout/.work/windows-app/logs/`. Die [Windows-Architektur](ARCHITEKTUR.md)
+liegt im ZIP direkt neben dem Starter.
+Lokale Daten liegen im entpackten Ordner unter `checkout/.work/`. Beim Wechsel
+zu einem neuen Paket kann dieser Ordner nach beendetem Programm übernommen werden.
+
+Aus einem Git-Checkout mit Python ab 3.11, Git und einer Go-Toolchain erstellen:
+
+```powershell
+python windows-app/build_portable.py --output .work/666DEV-Windows-x64.zip
+```
+
+Der Build verpackt den Commit am Git HEAD. Die Runtime-Archive werden mit festen
+SHA-256-Werten geprüft. Die GitHub-Workflow-Ausgabe enthält den auf Windows
+geprüften ZIP-Build, sobald der Workflow erfolgreich abgeschlossen ist.
+
+## Entwicklungsstart im Checkout
+
 Doppelklick auf [START_666DEV_WINDOWS.cmd](START_666DEV_WINDOWS.cmd) im lokalen 666DEV-Git-Checkout. Benötigt werden Git for Windows im PATH und Python ab 3.11. Das Fenster öffnet sich im Edge-App-Modus, sofern Edge verfügbar ist, sonst im Standardbrowser. Die Startkonsole offen lassen. Strg+C beendet den lokalen Server. Es sind keine zusätzlichen Python-Pakete, API-Abos oder Hosting-Dienste erforderlich.
 
 | Ansicht | Funktion |
@@ -21,8 +49,8 @@ wird die Datei gegen die nativen Quellen geprüft. Details stehen im
 
 ## 666REPO-MIND
 
-Im Tab **Repo Mind** stehen der Quellkontext und die Ordnungsprüfung im selben
-Fenster bereit. **Quellkontext prüfen** übernimmt aus Desktop v0.3.1 die
+Unter **Repo Mind → Repo-Analyse** stehen der Quellkontext und die Ordnungsprüfung
+im selben Fenster bereit. **Quellkontext prüfen** übernimmt aus Desktop v0.3.1 die
 Dateipriorisierung und Python-Fundstellen anhand von Commit, Tree und Blob.
 Die Auswahl arbeitet mit dem ausgecheckten 666DEV-Repository.
 
@@ -72,3 +100,9 @@ Unter **Einstellungen** kannst du für den eingestellten GitHub-Branch
 einen vollständigen erwarteten Commit eingeben. Ein erfolgreicher
 Abgleich bestätigt den Branch-Stand zum Abrufzeitpunkt. Tests und
 Deployment haben eigene Nachweise.
+
+## Chat-Archiv
+
+Unter **Repo Mind → Chat-Archiv** den vollständigen lokalen Pfad zu einem ChatGPT- oder
+AI-Exporter-Download einfügen und importieren. Die Suche und der Markdown-Export
+nutzen denselben lokalen Index wie die CLI. [Formate und Speicherpfad](../docs/chat-archive.md).
