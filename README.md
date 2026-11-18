@@ -82,6 +82,9 @@ stored in the profile.
 
 ## Dashboard and verification
 
+Der Windows-Starter und die Anleitung für den Domain-Zugriff liegen im
+[Dashboard-Verzeichnis](dashboard/README.md).
+
 ```sh
 python -m devhub.cli dashboard
 # Open http://127.0.0.1:8766; Ctrl-C to stop.
