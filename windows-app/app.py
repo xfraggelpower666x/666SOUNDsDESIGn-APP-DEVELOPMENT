@@ -263,7 +263,20 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", type=int, default=8767)
     parser.add_argument("--no-window", action="store_true")
+    parser.add_argument("--check", action="store_true", help="Lokalen Startpfad prüfen und beenden")
     args = parser.parse_args()
+    if args.check:
+        root = run_local(["git", "rev-parse", "--show-toplevel"])
+        revision = run_local(["git", "rev-parse", "--verify", "HEAD"])
+        missing = sorted(route for route, (file, _) in ASSETS.items() if not file.is_file())
+        ready = (root["exit_code"] == revision["exit_code"] == 0
+                 and Path(root["stdout"].strip()).resolve() == ROOT and not missing)
+        print(json.dumps({"status": "VERIFIZIERT" if ready else "BLOCKIERT",
+                          "python": sys.version.split()[0], "git_commit": revision["stdout"].strip(),
+                          "missing_assets": missing}))
+        if not ready:
+            raise SystemExit(2)
+        return
     with ControlServer(args.port) as server:
         print(f"666DEV Windows Control: {server.origin}", flush=True)
         if not args.no_window:

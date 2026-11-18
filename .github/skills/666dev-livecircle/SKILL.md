@@ -44,3 +44,9 @@ Bei Änderungen am 666DEV-Live-System gehört der
 zum Start, zur Wiederaufnahme und zum Update. Nenne die geprüfte Basis, die
 betroffenen PC-Funktionen und ob Abgleich, Anpassung oder Windows-Abnahme
 ansteht. Verwende die zuletzt belegte PC-Revision, wenn sie vorliegt.
+
+Ein direktes `666DEV UPDATE` nach einem 666DEV-bezogenen Quellenpaket folgt
+[Update mit Quellenpaket](../../../docs/livecircle.md#update-mit-quellenpaket).
+Prüfe die Änderungen und integriere die relevanten Teile in den Hub. Die
+Projektwahl gilt für den separaten Projekt-Current; sie darf die Quellenintegration
+in 666DEV nicht blockieren.

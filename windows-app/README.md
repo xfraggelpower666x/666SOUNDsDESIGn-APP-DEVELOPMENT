@@ -41,3 +41,13 @@ Im Tab **LiveCircle** zeigt der Windows-Abgleich betroffene PC-Funktionen.
 Für den vollständigen Vergleich seit deiner Installation gib die letzte
 belegte PC-Revision ein und wähle **Stand abgleichen**. Details stehen im
 [LiveCircle-Vertrag](../docs/livecircle.md#pflichtabgleich-mit-der-windows-anwendung).
+
+### Startdiagnose
+
+`START_666DEV_WINDOWS.cmd --check` prüft Python, Git-Checkout und erforderliche
+App-Dateien und beendet sich ohne Browserfenster. Die Batch-Datei gibt den
+Rückgabecode des Python-Prozesses an PowerShell, CMD oder CI weiter. Als
+Windows-Gegenprobe starte die Diagnose aus einem anderen Arbeitsverzeichnis
+und aus einem Checkout-Pfad mit Leerzeichen. Ein fehlendes Pflichtwerkzeug
+muss einen Fehlercode liefern. Für die vollständige Abnahme anschließend
+die Oberfläche normal starten.

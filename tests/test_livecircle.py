@@ -30,8 +30,9 @@ class LiveCircleTests(unittest.TestCase):
                 boot = json.loads(execute(["666DEV", "SYSTEMSTART"]))
                 self.assertIn(project, boot["projects"])
                 self.assertIsNone(boot["project_id"])
-                self.assertEqual("PROJECT_SELECTION_REQUIRED",
-                                 json.loads(execute(["666DEV", "UPDATE"]))["status"])
+                update = json.loads(execute(["666DEV", "UPDATE"]))
+                self.assertEqual("PROJECT_SELECTION_REQUIRED", update["status"])
+                self.assertFalse(update["source_integration"]["requires_project_selection"])
                 self.assertEqual("READBACK_PENDING",
                                  json.loads(execute(["666DEV", "FUCK", "HORST"]))["status"])
                 self.assertEqual("OFFEN", snapshot(project)["status"])

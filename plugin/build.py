@@ -7,7 +7,7 @@ from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE_SHA256 = "36ac802650efe11fb9d7952648435572fc91248fabd9cd8008d153662ec49219"
+SOURCE_SHA256 = "7537c8bf6fbfa3a275519a60e8a7e58a7324264f88b0133509d0fbc4cf077ac8"
 SKILL = "skills/666dev-livecircle"
 LEGACY = "skills/sceeri-coding-profi-livecircle/SKILL.md"
 AUTHORITY = (
@@ -44,7 +44,7 @@ def dump(data):
 def build(source: Path, destination: Path):
     raw = source.read_bytes()
     if hashlib.sha256(raw).hexdigest() != SOURCE_SHA256:
-        raise ValueError("Expected the reviewed Coding Profi 0.74.0 source archive.")
+        raise ValueError("Expected the reviewed Coding Profi 0.75.0 source archive.")
     if destination.resolve() == source.resolve():
         raise ValueError("Choose a new output path.")
     with ZipFile(io.BytesIO(raw)) as archive:
@@ -57,7 +57,7 @@ def build(source: Path, destination: Path):
         longDescription="666DEV-Projektkontinuität und Coding-Profi-Fachskills für Analyse, Entwicklung, Repair, Test und Übergabe.",
         defaultPrompt=["666DEV HELP", "Zeige mir den 666DEV-LiveCircle für mein registriertes Projekt."],
     )
-    manifest.update(name="666dev-coding-control", version="0.1.1", description=display["longDescription"])
+    manifest.update(name="666dev-coding-control", version="0.1.2", description=display["longDescription"])
     files["plugin.json"] = dump(manifest)
     overlay = json.loads(files[".codex-plugin/plugin.json"])
     overlay.update(name=manifest["name"], version=manifest["version"],

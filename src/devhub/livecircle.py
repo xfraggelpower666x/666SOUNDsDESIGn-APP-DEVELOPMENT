@@ -89,7 +89,7 @@ def hub_entry(*, update: bool = False) -> dict:
     """Read the hub registry without selecting a project or creating a checkpoint."""
     action = "UPDATE" if update else "SYSTEMSTART"
     head = core.git(core.ROOT, "rev-parse", "--verify", "HEAD^{commit}")
-    return {
+    report = {
         "authority": "666DEV",
         "action": action,
         "status": "PROJECT_SELECTION_REQUIRED" if update else "PARTIAL",
@@ -100,6 +100,13 @@ def hub_entry(*, update: bool = False) -> dict:
         "project_status": "OFFEN",
         "next_command": f"666DEV <PROJEKT-ID> {action}",
     }
+    if update:
+        report["source_integration"] = {
+            "entry": "LiveCircle-Vertrag, Abschnitt Update mit Quellenpaket",
+            "requires_project_selection": False,
+            "handling": "Chat oder Coding-Host mit belegtem Repo- und Quellenzugriff",
+        }
+    return report
 
 
 def diagnose(project_id: str | None = None, handoff: dict | None = None) -> dict:

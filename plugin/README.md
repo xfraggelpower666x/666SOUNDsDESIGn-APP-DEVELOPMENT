@@ -2,11 +2,11 @@
 
 Die zentralen Projektregeln und der LiveCircle liegen in
 [der Haupt-Repo](../docs/livecircle.md). Dieses Verzeichnis enthält den
-reproduzierbaren Paketbau. Das Quellpaket L.Y.V.R.A. CODING PROFI 0.74.0 wird
+reproduzierbaren Paketbau. Das Quellpaket L.Y.V.R.A. CODING PROFI 0.75.0 wird
 über seinen SHA-256 identifiziert und bleibt für einen Neubau erforderlich.
 
 ```powershell
-py plugin/build.py "L.Y.V.R.A. CODING PROFI (2).zip" 666dev-coding-control.zip
+py plugin/build.py "L.Y.V.R.A. CODING PROFI (3).zip" 666dev-coding-control.zip
 ```
 
 Das private Plugin übernimmt Fachskills, Referenzen, ToolStarter und die
