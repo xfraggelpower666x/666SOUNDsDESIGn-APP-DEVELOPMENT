@@ -28,6 +28,7 @@ async function initialize() {
     get("mind-target").value = state.config.ref;
     for (const project of state.projects) get("project").add(new Option(project, project));
     if (!document.querySelector('[data-panel="livecircle"]').hidden) refreshCircle();
+    if (!document.querySelector('[data-panel="visualforms"]').hidden) openVisualforms();
   } catch (error) {
     get("local-state").textContent = "Nicht erreichbar";
     message.textContent = error.message;
@@ -52,11 +53,17 @@ async function action(name, confirmed = false, project = get("project").value) {
   }
 }
 
+function openVisualforms() {
+  const project = encodeURIComponent(get("project").value);
+  get("visualforms-frame").src = "/visualforms/?project=" + project;
+}
+
 for (const button of document.querySelectorAll("[data-view]")) {
   button.addEventListener("click", () => {
     for (const tab of document.querySelectorAll("[data-view]")) tab.setAttribute("aria-pressed", String(tab === button));
     for (const panel of document.querySelectorAll("[data-panel]")) panel.hidden = panel.dataset.panel !== button.dataset.view;
     if (button.dataset.view === "livecircle") refreshCircle();
+    if (button.dataset.view === "visualforms") openVisualforms();
     if (button.dataset.view === "dashboard") {
       const project = encodeURIComponent(get("project").value);
       get("dashboard-frame").src = "/dashboard/?project=" + project;

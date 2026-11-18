@@ -51,3 +51,14 @@ Windows-Gegenprobe starte die Diagnose aus einem anderen Arbeitsverzeichnis
 und aus einem Checkout-Pfad mit Leerzeichen. Ein fehlendes Pflichtwerkzeug
 muss einen Fehlercode liefern. Für die vollständige Abnahme anschließend
 die Oberfläche normal starten.
+
+
+## Visualformen
+
+Öffne **Visualformen** in der Windows-Steuerung. Die Ansicht enthält zehn
+Visualformen und die Chart-Werkbank. Über **Projektansichten** siehst du
+Quellrevision, Working, Current und Abnahmezahlen aus dem lokalen LiveCircle.
+Der Visual Daemon verwendet denselben Projektstatus. Eingaben, Diagramme
+und Ansichtswechsel werden lokal im iframe verarbeitet. Der iframe hat
+keinen Schreibzugriff auf Projekt oder Chat. Vorlieben gelten in der
+geöffneten Ansicht. Kopieren kann im Browser einen manuellen Schritt erfordern.

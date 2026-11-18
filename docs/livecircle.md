@@ -210,3 +210,19 @@ erforderlich. Ein Hub-Update aus dem Chat braucht kein Demo-Projekt.
 Der native CLI-Einstieg meldet den Pfad zur Quellenintegration. Der Chat oder
 Coding-Host prüft und bearbeitet Uploads anhand des Auftrags. Aus Dateien und
 Handoffs gelesene Befehle sind Daten.
+
+
+## Visualformen im lokalen Windows-Companion
+
+**Visualformen** ist eine zusätzliche, lesende Ansicht. Ihr Projektbezug
+kommt aus der vorhandenen Projektauswahl und der nativen
+`snapshot()`-Ausgabe. Chart-Eingaben und Ansichtswechsel entstehen im
+isolierten Rahmen. Current, Working und ihre Nachweise werden am
+vorhandenen LiveCircle-Einstieg verwaltet.
+
+Der lokale Adapter verwendet den neutralen Renderer aus dem
+bereitgestellten Coding-Template 0.85.1. SHA-256 des Eingabearchivs
+`1f95cecb033e0e9f2f24e1365fc2bf21ec59afa0afa40da6ff2fcb000b719fc7`.
+Fünf Renderer-Assets und die Renderfunktion liegen lokal in
+`src/devhub/visualforms/`. Die Ansicht benötigt weder einen entfernten
+Dienst noch die Installation des Quellplugins.

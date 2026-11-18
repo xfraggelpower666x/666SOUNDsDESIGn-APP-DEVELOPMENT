@@ -15,7 +15,7 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.error import HTTPError, URLError
-from urllib.parse import quote, urlsplit
+from urllib.parse import parse_qs, quote, urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -25,6 +25,7 @@ from devhub.core import DevhubError, atomic_json, dashboard_data, project_entrie
 from devhub.livecircle import resume, snapshot
 from devhub import repo_mind
 from devhub.repo_mind_context import inspect_sources
+from devhub.visualforms import ASSET_FILES as VISUAL_ASSETS, render_workspace
 
 UI = Path(__file__).resolve().parent / "ui"
 CONFIG = ROOT / ".work" / "windows-app" / "settings.json"
@@ -141,7 +142,7 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         pass
 
-    def respond(self, status, content, media):
+    def respond(self, status, content, media, *, policy=None):
         self.send_response(status)
         self.send_header("Content-Type", f"{media}; charset=utf-8")
         self.send_header("Content-Length", str(len(content)))
@@ -149,7 +150,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "no-referrer")
         self.send_header("Content-Security-Policy",
-                         "default-src 'self'; frame-ancestors 'self'; base-uri 'none'; form-action 'self'")
+                         policy or "default-src 'self'; frame-ancestors 'self'; base-uri 'none'; form-action 'self'")
         self.end_headers()
         self.wfile.write(content)
 
@@ -163,11 +164,24 @@ class Handler(BaseHTTPRequestHandler):
         if not self.local_host():
             self.json(403, {"error": "Lokaler Host erforderlich."})
             return
-        route = urlsplit(self.path).path
+        url = urlsplit(self.path)
+        route = url.path
         try:
             if route in ASSETS:
                 path, media = ASSETS[route]
                 self.respond(200, path.read_bytes(), media)
+            elif route == "/visualforms/":
+                project, *duplicates = parse_qs(url.query, keep_blank_values=True).get("project", [""])
+                if duplicates or (project and project not in project_entries()):
+                    self.json(400, {"error": "Unbekanntes Projekt."})
+                    return
+                nonce = secrets.token_urlsafe(24)
+                html = render_workspace(snapshot(project) if project else None)
+                html = html.replace("<script>", f'<script nonce="{nonce}">')
+                self.respond(200, html.encode("utf-8"), "text/html", policy=(
+                    f"default-src 'none'; script-src 'nonce-{nonce}'; style-src 'unsafe-inline'; "
+                    "frame-ancestors 'self'; base-uri 'none'; form-action 'none'; sandbox allow-scripts allow-forms"
+                ))
             elif route == "/dashboard.json":
                 self.json(200, dashboard_data())
             elif route == "/api/state":
@@ -269,6 +283,7 @@ def main():
         root = run_local(["git", "rev-parse", "--show-toplevel"])
         revision = run_local(["git", "rev-parse", "--verify", "HEAD"])
         missing = sorted(route for route, (file, _) in ASSETS.items() if not file.is_file())
+        missing.extend(str(path.relative_to(ROOT)) for path in VISUAL_ASSETS if not path.is_file())
         ready = (root["exit_code"] == revision["exit_code"] == 0
                  and Path(root["stdout"].strip()).resolve() == ROOT and not missing)
         print(json.dumps({"status": "VERIFIZIERT" if ready else "BLOCKIERT",

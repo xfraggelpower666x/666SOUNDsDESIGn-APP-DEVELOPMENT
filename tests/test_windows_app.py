@@ -1,6 +1,7 @@
 import importlib.util
 import io
 import json
+import re
 import tempfile
 import threading
 import unittest
@@ -57,6 +58,30 @@ class WindowsAppTest(unittest.TestCase):
         status, result = self.request("/api/action", {"action": "UPDATE", "project": state["projects"][0]}, **headers)
         self.assertEqual(status, 400)
         self.assertIn("bestätigt", json.loads(result)["error"])
+
+    def test_visualforms_uses_local_native_evidence_and_is_read_only(self):
+        self.assertEqual(403, self.request("/visualforms/", Host="external.example")[0])
+        self.assertEqual(400, self.request("/visualforms/?project=unknown")[0])
+        self.assertEqual(400, self.request("/visualforms/?project=&project=demo-monorepo")[0])
+        self.client.request("GET", "/visualforms/?project=demo-monorepo")
+        response = self.client.getresponse()
+        body = response.read().decode()
+        self.assertEqual(200, response.status)
+        policy = response.getheader("Content-Security-Policy")
+        self.assertIn("sandbox allow-scripts allow-forms", policy)
+        self.assertIn("default-src 'none'", policy)
+        nonce = re.search(r"script-src 'nonce-([^']+)'", policy)[1]
+        self.assertIn(f'<script nonce="{nonce}">', body)
+        self.assertNotIn("<script>", body)
+        payload = json.loads(re.search(r'data-ui-data>(.*?)</script>', body)[1])
+        native = app.snapshot("demo-monorepo")
+        self.assertEqual(native["source_commit"], payload["companion"]["source_revision"])
+        self.assertEqual(native["status"], payload["views"][0]["status"])
+        self.assertEqual("neutral", payload["handoff_format"])
+        self.assertNotIn(str(app.ROOT), body)
+        status, empty = self.request("/visualforms/")
+        self.assertEqual(200, status)
+        self.assertIn("Projektquelle offen", empty.decode())
 
     def test_livecircle_shares_native_result(self):
         _, headers = self.session()
