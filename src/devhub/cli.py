@@ -17,6 +17,7 @@ HELP = """666DEV commands (parsed only from this direct invocation):
   666DEV HELP
   666DEV STATUS
   666DEV SYSTEMSTART | UPDATE | FUCK HORST
+  666DEV REPO-MIND CHECK [RENAME-BASE] | INDEX | PR <RENAME-BASE> <TARGET-BRANCH>
   666DEV <PROJECT-ID> FUCK HORST [handoff.json]
   666DEV <PROJECT-ID> SYSTEMSTART|STATUS|WEITER|CODEFORGE|SUPERCODEFORGE|VISUAL|UPDATE|FREEZE
   666DEV <PROJECT-ID> CONTEXT|BUILD
@@ -310,6 +311,20 @@ def execute(tokens: list[str]) -> str:
         raise DevhubError("A namespace-qualified 666DEV command is required. Try 666DEV HELP.")
     if len(normalized) == 1 or normalized[1] == "HELP":
         return HELP
+    if normalized[1] == "REPO-MIND":
+        from .repo_mind import publish, refresh_index, scan
+
+        args = tokens[3:]
+        action = normalized[2] if len(normalized) > 2 else "CHECK"
+        if action == "CHECK" and len(args) <= 1:
+            report, _ = scan(ROOT, *args)
+        elif action == "INDEX" and not args:
+            report = refresh_index(ROOT)
+        elif action == "PR" and len(args) == 2:
+            report = publish(ROOT, *args)
+        else:
+            raise DevhubError("Use 666DEV REPO-MIND CHECK [BASE], INDEX or PR <BASE> <TARGET-BRANCH>.")
+        return json.dumps(report, indent=2, ensure_ascii=False)
     if normalized[1] == "STATUS":
         if len(normalized) != 2:
             raise DevhubError("Global STATUS takes no project argument.")

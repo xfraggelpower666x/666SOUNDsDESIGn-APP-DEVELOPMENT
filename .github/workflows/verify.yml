@@ -32,3 +32,11 @@ jobs:
             BASE_SHA=HEAD
           fi
           python -m devhub.verifier --base "$BASE_SHA"
+      - name: Repo Mind hygiene report
+        env:
+          PYTHONPATH: src
+          RENAME_BASE: ${{ github.event.pull_request.base.sha || 'HEAD' }}
+        run: |
+          git merge-base "$RENAME_BASE" HEAD > "$RUNNER_TEMP/666repo-mind-base"
+          python -m devhub.cli 666DEV REPO-MIND CHECK "$(cat "$RUNNER_TEMP/666repo-mind-base")"
+          python -m devhub.cli 666DEV REPO-MIND INDEX

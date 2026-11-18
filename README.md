@@ -22,6 +22,11 @@ The same commands are available as `666dev HELP`, `666dev STATUS`, or
 `666dev <PROJECT-ID> SYSTEMSTART` after installation. Use `666dev-verify --base HEAD`
 for verification. Windows users can substitute `py -m` for `python -m`.
 
+## 666REPO-MIND
+
+Repo-Ordnung und interne Markdown-Links mit `666DEV REPO-MIND CHECK` prüfen.
+[Regeln, Index und separater Korrektur-PR](docs/repo-mind.md).
+
 ## Project lifecycle
 
 [666DEV LiveCircle](docs/livecircle.md) für Wiederaufnahme in Repo, ChatGPT, Plugin und Windows.

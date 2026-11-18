@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "generated_index": ".work/repo-mind/file-index.json",
+  "required_roots": [".github", "docs", "projects", "registry", "src", "tests"],
+  "allowed_roots": [".agents", ".github", ".gitignore", "AGENTS.md", "README.md", "agents", "dashboard", "docs", "plugin", "projects", "pyproject.toml", "registry", "schemas", "src", "templates", "tests", "web", "windows-app"],
+  "auto_link_sources": ["README.md", "docs/"]
+}
