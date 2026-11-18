@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>666DEV · Windows Control</title>
+  <link rel="stylesheet" href="/app.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="masthead">
+    <div><p class="brand">666SOUNDsDESIGn</p><h1>666<span>DEV</span></h1></div>
+    <nav aria-label="Ansicht">
+      <button data-view="controls" aria-pressed="true">Steuerung</button>
+      <button data-view="dashboard" aria-pressed="false">Dashboard</button>
+      <button data-view="settings" aria-pressed="false">Einstellungen</button>
+    </nav>
+  </header>
+  <main>
+    <section class="hud" aria-label="Systemstatus">
+      <article><h2>Steuerung</h2><strong id="local-state">Verbinden …</strong></article>
+      <article><h2>Checkout</h2><strong id="head-state">—</strong></article>
+      <article><h2>GitHub API</h2><strong id="github-state">Offen</strong></article>
+    </section>
+    <div id="message" role="status"></div>
+    <section data-panel="controls" class="pane">
+      <div class="controls">
+        <h2>Entwicklungsaktionen</h2>
+        <label for="project">Projekt</label>
+        <select id="project"></select>
+        <div class="actions" id="actions">
+          <button data-action="STATUS">Status</button>
+          <button data-action="CONTEXT">Kontext</button>
+          <button data-action="IMPACT">Änderungsfolgen</button>
+          <button data-action="GIT">Git-Status</button>
+          <button data-action="VERIFY">Repo prüfen</button>
+          <button data-action="SYSTEMSTART">Systemstart</button>
+          <button data-action="CODEFORGE">CodeForge</button>
+          <button data-action="SUPERCODEFORGE">SuperCodeForge</button>
+          <button data-action="WEITER">Weiter</button>
+          <button data-action="BUILD">Build</button>
+          <button data-action="FREEZE">Freeze</button>
+          <button data-action="UPDATE" class="accent">Current aktualisieren</button>
+        </div>
+      </div>
+      <div class="output"><h2>Ausgabe</h2><pre id="output" tabindex="0">Aktion auswählen.</pre></div>
+    </section>
+    <section data-panel="dashboard" class="pane dashboard" hidden>
+      <iframe title="666DEV Projekt-Dashboard" id="dashboard-frame"></iframe>
+    </section>
+    <section data-panel="settings" class="pane settings" hidden>
+      <form id="settings-form">
+        <h2>Repository</h2>
+        <label for="repository">GitHub-Repository</label>
+        <input id="repository" required spellcheck="false" placeholder="owner/repo">
+        <label for="ref">GitHub-Branch oder Commit</label>
+        <input id="ref" required spellcheck="false">
+        <label for="base">Lokale Git-Basis für Verifier und Änderungsfolgen</label>
+        <input id="base" required spellcheck="false">
+        <button class="accent" type="submit">Speichern</button>
+      </form>
+      <form id="github-form">
+        <h2>GitHub-Zugang prüfen</h2>
+        <label for="token">Lesetoken für private Repositories (optional)</label>
+        <input id="token" type="password" autocomplete="off" spellcheck="false">
+        <button type="submit">Gespeicherten Ref lesen</button>
+        <p id="github-result">Ein Token wird nur für diesen Abruf verwendet.</p>
+      </form>
+    </section>
+  </main>
+  <dialog id="confirm-dialog">
+    <form method="dialog">
+      <h2>Current aktualisieren</h2><p id="confirm-target"></p>
+      <div class="actions"><button value="cancel" autofocus>Abbrechen</button><button value="apply" class="accent">Ausführen</button></div>
+    </form>
+  </dialog>
+</body>
+</html>

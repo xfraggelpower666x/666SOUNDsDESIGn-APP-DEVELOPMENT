@@ -83,7 +83,8 @@ stored in the profile.
 ## Dashboard and verification
 
 Der Windows-Starter und die Anleitung für den Domain-Zugriff liegen im
-[Dashboard-Verzeichnis](dashboard/README.md).
+[Dashboard-Verzeichnis](dashboard/README.md). Die lokale Entwicklungssteuerung
+mit integriertem Dashboard liegt separat unter [windows-app/](windows-app/README.md).
 
 ```sh
 python -m devhub.cli dashboard
