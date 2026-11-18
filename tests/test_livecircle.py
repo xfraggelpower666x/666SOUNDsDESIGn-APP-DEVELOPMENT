@@ -27,6 +27,14 @@ class LiveCircleTests(unittest.TestCase):
                 project = "demo-monorepo"
                 self.assertEqual("READBACK_PENDING", snapshot("demo-linked")["status"])
                 self.assertEqual("OFFEN", snapshot(project)["status"])
+                boot = json.loads(execute(["666DEV", "SYSTEMSTART"]))
+                self.assertIn(project, boot["projects"])
+                self.assertIsNone(boot["project_id"])
+                self.assertEqual("PROJECT_SELECTION_REQUIRED",
+                                 json.loads(execute(["666DEV", "UPDATE"]))["status"])
+                self.assertEqual("READBACK_PENDING",
+                                 json.loads(execute(["666DEV", "FUCK", "HORST"]))["status"])
+                self.assertEqual("OFFEN", snapshot(project)["status"])
                 execute(["666DEV", project, "SYSTEMSTART"])
                 handoff = json.loads(execute(["666DEV", project, "NEW-CHAT"]))
                 self.assertEqual("VERIFIZIERT", handoff["status"])
@@ -40,10 +48,20 @@ class LiveCircleTests(unittest.TestCase):
                 self.assertEqual("VERIFIZIERT", result["status"])
                 self.assertEqual("WEITER", result["livecircle"]["next_action"])
                 self.assertEqual("CONFLICT_QUARANTINE", resume("demo-linked", handoff)["status"])
+                self.assertEqual("NO_DRIFT_EVIDENCE",
+                                 json.loads(execute(["666DEV", project, "FUCK", "HORST", str(file)]))["status"])
+                foreign = {**handoff, "project_id": "demo-linked"}
+                file.write_text(json.dumps(foreign), encoding="utf-8")
+                self.assertEqual("OBSERVED_DRIFT",
+                                 json.loads(execute(["666DEV", project, "FUCK", "HORST", str(file)]))["status"])
                 self.assertIsNone(snapshot(project)["current"])
                 execute(["666DEV", project, "SYSTEMSTART"])
                 self.assertIn("working", resume(project, handoff)["changed_fields"])
                 self.assertEqual("PARTIAL", resume(project, handoff)["status"])
+                file.write_text(json.dumps(handoff), encoding="utf-8")
+                diagnosis = json.loads(execute(["666DEV", project, "FUCK", "HORST", str(file)]))
+                self.assertEqual("SUSPECTED_DRIFT", diagnosis["status"])
+                self.assertIn("working", diagnosis["changed_fields"])
 
                 app = root / "projects" / project / "app"
                 (app / "dirty.txt").write_text("new local input", encoding="utf-8")

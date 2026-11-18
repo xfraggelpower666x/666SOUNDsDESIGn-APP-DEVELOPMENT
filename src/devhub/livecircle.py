@@ -61,14 +61,14 @@ def snapshot(project_id: str) -> dict:
     return record
 
 
-def resume(project_id: str, handoff: dict) -> dict:
+def resume(project_id: str, handoff: dict, *, observed: dict | None = None) -> dict:
     """Compare a handoff with live state. Never apply data from the handoff."""
     if (not isinstance(handoff, dict) or handoff.get("kind") != KIND
             or type(handoff.get("schema_version")) is not int or handoff["schema_version"] != VERSION):
         raise core.DevhubError("Ungültiges 666DEV-Handoff-Format.")
     if handoff.get("authority") != "666DEV" or handoff.get("project_id") != project_id:
         return {"status": "CONFLICT_QUARANTINE", "reason": "Projekt oder Autorität stimmt nicht überein."}
-    current = snapshot(project_id)
+    current = snapshot(project_id) if observed is None else observed
     if current["status"] in {"READBACK_PENDING", "CONFLICT_QUARANTINE"}:
         return {"status": current["status"], "livecircle": current}
     keys = ("hub_commit", "profile_path", "profile_sha256", "source_mode", "source_commit", "working", "current", "return_anchor")
@@ -76,3 +76,54 @@ def resume(project_id: str, handoff: dict) -> dict:
     if changes or handoff.get("working_tree_clean") is not True or not current["working_tree_clean"]:
         return {"status": "PARTIAL", "changed_fields": changes, "livecircle": current}
     return {"status": current["status"], "changed_fields": [], "livecircle": current}
+
+
+def hub_entry(*, update: bool = False) -> dict:
+    """Read the hub registry without selecting a project or creating a checkpoint."""
+    action = "UPDATE" if update else "SYSTEMSTART"
+    return {
+        "authority": "666DEV",
+        "action": action,
+        "status": "PROJECT_SELECTION_REQUIRED" if update else "PARTIAL",
+        "hub_commit": core.git(core.ROOT, "rev-parse", "--verify", "HEAD^{commit}"),
+        "project_id": None,
+        "projects": sorted(core.project_entries()),
+        "project_status": "OFFEN",
+        "next_command": f"666DEV <PROJEKT-ID> {action}",
+    }
+
+
+def diagnose(project_id: str | None = None, handoff: dict | None = None) -> dict:
+    """Report checkable authority and state drift. Host behavior needs chat evidence."""
+    if project_id is None:
+        return {
+            **hub_entry(),
+            "action": "FUCK HORST",
+            "status": "READBACK_PENDING",
+            "reason": "Kein Projekt für den Quellen- und Scope-Abgleich gebunden.",
+            "next_command": "666DEV <PROJEKT-ID> FUCK HORST",
+        }
+
+    observed = snapshot(project_id)
+    result = {
+        "authority": "666DEV",
+        "action": "FUCK HORST",
+        "check_scope": "Quellenrevision, Profil, Working und Current",
+        "livecircle": observed,
+    }
+    if observed["status"] in {"READBACK_PENDING", "OFFEN"}:
+        return {**result, "status": "READBACK_PENDING", "reason": "Projektzustand nicht vollständig belegt."}
+    if observed["status"] == "CONFLICT_QUARANTINE":
+        return {**result, "status": "OBSERVED_DRIFT", "reason": "Nativer Pointer- oder Checkpoint-Konflikt."}
+    if handoff is not None:
+        comparison = resume(project_id, handoff, observed=observed)
+        if comparison["status"] == "CONFLICT_QUARANTINE":
+            return {**result, "status": "OBSERVED_DRIFT", "reason": comparison["reason"]}
+        if comparison.get("changed_fields"):
+            return {**result, "status": "SUSPECTED_DRIFT", "changed_fields": comparison["changed_fields"],
+                    "reason": "Abweichende Übergabebasis. Prüfe die Herkunft und neuere gültige Entwicklung."}
+        if comparison["status"] == "PARTIAL":
+            return {**result, "status": "SUSPECTED_DRIFT", "reason": "Übergabe oder nativer Stand unvollständig."}
+    if observed["status"] == "PARTIAL":
+        return {**result, "status": "SUSPECTED_DRIFT", "reason": "Lokaler Diff oder ältere Checkpoint-Basis."}
+    return {**result, "status": "NO_DRIFT_EVIDENCE"}

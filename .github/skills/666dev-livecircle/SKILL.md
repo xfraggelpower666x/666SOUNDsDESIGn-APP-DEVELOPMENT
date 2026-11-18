@@ -1,9 +1,19 @@
 ---
 name: 666dev-livecircle
-description: Prüft Quellenstand, Current, Checkpoint und Wiederaufnahme in 666DEV. Bei SYSTEMSTART, WEITER, UPDATE, Handoffs, HEAD-Wechsel und Recovery verwenden.
+description: Prüft Quellenstand, Current, Checkpoint und Wiederaufnahme in 666DEV. Bei SYSTEMSTART, WEITER, UPDATE, FUCK HORST, Handoffs, HEAD-Wechsel und Recovery verwenden.
 ---
 
 # 666dev-livecircle
+
+## Direkte Chat-Einstiege
+
+Führe `666DEV SYSTEMSTART`, `666DEV UPDATE` und `666DEV FUCK HORST` auch ohne
+Argument als direkte Chat-Nachrichten nach dem
+[LiveCircle-Vertrag](../../../docs/livecircle.md#direkte-chat-trigger) aus.
+Prüfe vor der Rehydration Autorität, belegte Projektbindung und Scope. Bleibt
+das Projekt offen, frage nach der Projekt-ID. Bei `FUCK HORST` bleibt Recovery
+lesend und auf den belegten Kontext begrenzt. Diagnose, Nachweis und Ausführung
+sind getrennte Ergebnisse.
 
 ## Wiederaufnahme
 

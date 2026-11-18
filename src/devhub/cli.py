@@ -16,6 +16,8 @@ from .core import (
 HELP = """666DEV commands (parsed only from this direct invocation):
   666DEV HELP
   666DEV STATUS
+  666DEV SYSTEMSTART | UPDATE | FUCK HORST
+  666DEV <PROJECT-ID> FUCK HORST [handoff.json]
   666DEV <PROJECT-ID> SYSTEMSTART|STATUS|WEITER|CODEFORGE|SUPERCODEFORGE|VISUAL|UPDATE|FREEZE
   666DEV <PROJECT-ID> CONTEXT|BUILD
   666DEV <PROJECT-ID> LIVECIRCLE|REHYDRATE|NEW-CHAT
@@ -282,6 +284,20 @@ def _patch_apply(project_id: str, candidate_arg: str) -> str:
     return f"Scoped patch materialized in isolated worktree: {worktree}; run 666DEV {project_id} WEITER."
 
 
+def _read_handoff(path: str) -> dict:
+    try:
+        with Path(path).open("rb") as stream:
+            raw = stream.read(8193)
+        if len(raw) > 8192:
+            raise ValueError("handoff exceeds 8192 bytes")
+        handoff = json.loads(raw.decode("utf-8-sig"))
+        if not isinstance(handoff, dict):
+            raise ValueError("handoff must be a JSON object")
+        return handoff
+    except (OSError, ValueError) as exc:
+        raise DevhubError("Cannot read the 666DEV handoff.") from exc
+
+
 def execute(tokens: list[str]) -> str:
     normalized = list(tokens)
     if normalized:
@@ -298,29 +314,30 @@ def execute(tokens: list[str]) -> str:
         if len(normalized) != 2:
             raise DevhubError("Global STATUS takes no project argument.")
         return render_status()
+    from .livecircle import ACTIONS as LIVECIRCLE_ACTIONS, diagnose, hub_entry, resume, snapshot
+
+    if normalized[1:] == ["SYSTEMSTART"]:
+        return json.dumps(hub_entry(), indent=2, ensure_ascii=False)
+    if normalized[1:] == ["UPDATE"]:
+        return json.dumps(hub_entry(update=True), indent=2, ensure_ascii=False)
+    if normalized[1:] == ["FUCK", "HORST"]:
+        return json.dumps(diagnose(), indent=2, ensure_ascii=False)
     if len(normalized) < 3:
         raise DevhubError("Project selection is required.")
     project_id, action = normalized[1].lower(), normalized[2]
     project_profile(project_id)
+    if action == "FUCK" and len(normalized) in (4, 5) and normalized[3].upper() == "HORST":
+        handoff = _read_handoff(normalized[4]) if len(normalized) == 5 else None
+        return json.dumps(diagnose(project_id, handoff), indent=2, ensure_ascii=False)
     if action not in {"PATCH-APPLY", "MANIFEST", "IMPACT", "NEXT-CHAT"} and len(normalized) != 3:
         raise DevhubError(f"{action} takes only a project ID.")
     if action == "STATUS":
         return render_status(project_id)
-    from .livecircle import ACTIONS as LIVECIRCLE_ACTIONS, resume, snapshot
-
     if action in LIVECIRCLE_ACTIONS:
         if action == "NEXT-CHAT":
             if len(normalized) != 4:
                 raise DevhubError("NEXT-CHAT requires one handoff path.")
-            try:
-                with Path(normalized[3]).open("rb") as stream:
-                    raw = stream.read(8193)
-                if len(raw) > 8192:
-                    raise ValueError("handoff exceeds 8192 bytes")
-                handoff = json.loads(raw.decode("utf-8-sig"))
-            except (OSError, ValueError) as exc:
-                raise DevhubError("Cannot read the 666DEV handoff.") from exc
-            return json.dumps(resume(project_id, handoff), indent=2, ensure_ascii=False)
+            return json.dumps(resume(project_id, _read_handoff(normalized[3])), indent=2, ensure_ascii=False)
         return json.dumps(snapshot(project_id), indent=2, ensure_ascii=False)
     if action == "IMPACT":
         from .impact import project_impact
