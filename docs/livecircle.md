@@ -98,6 +98,25 @@ gewechseltem Checkpoint oder lokalem Diff bleibt die Fortsetzung überprüfungsb
 Ein Projekt- oder Autoritätskonflikt liefert `CONFLICT_QUARANTINE`. Der Import
 schreibt nichts und übernimmt weder `next_action` noch Status aus der Übergabedatei.
 
+## Recovery-Bericht
+
+`NEXT-CHAT`, der Handoff-Import in Windows und die Diagnose mit Handoff
+verwenden denselben Recovery-Bericht. `context` enthält die nativen Pointer
+und die abweichenden Felder. Ein älterer Arbeitscheckpoint kann einen
+Wiederaufbau des Chatkontexts erfordern, während das Projekt am belegten
+Arbeitsschritt weiterlaufen kann.
+
+`project` enthält Quellcommit, Profilfingerabdruck, Arbeitsbaumstatus und Zahl
+der Nachweise am aktuellen Commit. Bei Änderungen an Projektquelle oder Profil,
+lokalen Änderungen oder einem älteren nativen Prüfstand schlägt der Bericht
+`IMPACT` vor. Bei einem Quellenwechsel berechnet 666DEV die Änderungsfolgen,
+sobald Git die alte Revision als Vorgänger bestätigt. Betroffene Prüfungen
+stammen aus den deklarierten Prüfpfaden und dem Repo-Graphen. Bei unvollständiger
+Zuordnung nennt der Bericht den Grund für die breitere Wiederprüfung. Eine
+fehlende oder divergierende Vergleichsbasis bleibt `READBACK_PENDING`.
+Der JSON-Handoff bleibt im Format v1. Die Recovery-Entscheidung entsteht bei
+jedem Import aus der aktuellen Quelle.
+
 ## Nutzung im Chat
 
 Bei einem direkten 666DEV-Auftrag zuerst den vom Nutzer gewählten Branch und

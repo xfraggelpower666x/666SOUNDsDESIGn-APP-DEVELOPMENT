@@ -206,8 +206,8 @@ class Handler(BaseHTTPRequestHandler):
                 base = data.get("desktop_base")
                 if base is not None:
                     base = valid_ref(base)
-                current = snapshot(project, desktop_base=base)
-                report = resume(project, data["handoff"], observed=current) if "handoff" in data else current
+                report = (resume(project, data["handoff"], desktop_base=base) if "handoff" in data
+                          else snapshot(project, desktop_base=base))
                 self.json(200, report)
             elif route == "/api/repo-mind":
                 with self.server.operation:

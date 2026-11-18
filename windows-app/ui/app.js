@@ -113,10 +113,15 @@ function downloadText(content, name, type) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+let livecircleRequest = 0;
+
 async function refreshCircle({handoff, download = false} = {}) {
   const project = get("project").value;
   if (!csrf || !project) return;
+  const requestId = ++livecircleRequest;
   const panel = get("livecircle-output");
+  const recoveryPanel = get("livecircle-recovery");
+  recoveryPanel.textContent = "";
   get("desktop-impact-status").textContent = "";
   get("livecircle-project").textContent = project;
   try {
@@ -125,7 +130,25 @@ async function refreshCircle({handoff, download = false} = {}) {
     if (desktopBase) data.desktop_base = desktopBase;
     const snapshot = await request("/api/livecircle", data);
     const result = JSON.stringify(snapshot, null, 2);
+    if (requestId !== livecircleRequest || get("project").value !== project) return;
     panel.textContent = result;
+    const recovery = snapshot.recovery;
+    if (recovery) {
+      const contextMessages = {
+        REBUILD_FROM_NATIVE: "Arbeitskontext aus dem aktuellen Repo-Stand wiederaufnehmen.",
+        MATCHES_HANDOFF: "Übergabe und aktueller Arbeitskontext stimmen überein.",
+        READBACK_PENDING: "Für die Wiederaufnahme fehlen gelesene Quelldaten.",
+        CONFLICT_QUARANTINE: "Die Wiederaufnahme ist wegen eines Konflikts gesperrt.",
+      };
+      const command = recovery.project.inspection_command || recovery.project.native_next_command;
+      recoveryPanel.textContent = [
+        contextMessages[recovery.context.state],
+        recovery.project.impact?.status === "VERIFIZIERT"
+          ? `${recovery.project.impact.changed_path_count} geänderte Projektpfade, ${recovery.project.impact.checks_to_repeat} erneute Prüfungen vorgeschlagen.`
+          : "",
+        command ? `Nächster Vorschlag: ${command.join(" ")}` : "",
+      ].filter(Boolean).join(" ");
+    }
     const impact = (snapshot.livecircle || snapshot).desktop_impact;
     const desktopMessages = {
       WINDOWS_REVIEW_REQUIRED: "Windows-App prüfen. Die betroffenen Funktionen stehen im Bericht.",
@@ -137,7 +160,7 @@ async function refreshCircle({handoff, download = false} = {}) {
       downloadText(result, `666dev-${project}-handoff.json`, "application/json");
     }
   } catch (error) {
-    panel.textContent = error.message;
+    if (requestId === livecircleRequest && get("project").value === project) panel.textContent = error.message;
   }
 }
 
@@ -151,6 +174,7 @@ get("import-handoff").addEventListener("change", async event => {
     if (file.size > 8192) throw new Error("Handoff überschreitet 8 KB.");
     await refreshCircle({handoff: JSON.parse(await file.text())});
   } catch (error) {
+    get("livecircle-recovery").textContent = "";
     get("livecircle-output").textContent = error.message;
   }
 });

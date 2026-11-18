@@ -75,6 +75,11 @@ class WindowsAppTest(unittest.TestCase):
         status, result = self.request("/api/livecircle", {**data, "handoff": handoff}, **headers)
         self.assertEqual(status, 200)
         self.assertEqual(json.loads(result)["livecircle"], handoff)
+        self.assertEqual("MATCHES_HANDOFF", json.loads(result)["recovery"]["context"]["state"])
+        foreign = {**handoff, "authority": "foreign"}
+        status, result = self.request("/api/livecircle", {**data, "handoff": foreign}, **headers)
+        self.assertEqual(200, status)
+        self.assertEqual({"state": "CONFLICT_QUARANTINE"}, json.loads(result)["recovery"]["project"])
 
     def test_repo_mind_is_local_and_uses_native_review(self):
         state, headers = self.session()

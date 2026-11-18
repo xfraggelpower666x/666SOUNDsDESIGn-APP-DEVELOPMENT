@@ -11,6 +11,7 @@ from .providers import LocalGitProvider
 CONTRACTS = (
     ("src/devhub/cli.py", "Befehle und Rückgaben der Windows-Steuerung"),
     ("src/devhub/livecircle.py", "LiveCircle und Handoff"),
+    ("src/devhub/recovery.py", "Wiederaufnahme und Projektprüfung im LiveCircle"),
     ("src/devhub/desktop_impact.py", "Windows-Abgleich im LiveCircle"),
     ("src/devhub/repo_mind.py", "Repo-Mind-Ansicht und Freigabe"),
     ("src/devhub/repo_mind_context.py", "Repo-Mind-Quellkontext"),

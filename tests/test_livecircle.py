@@ -48,6 +48,9 @@ class LiveCircleTests(unittest.TestCase):
                 result = json.loads(execute(["666DEV", project, "NEXT-CHAT", str(file)]))
                 self.assertEqual("VERIFIZIERT", result["status"])
                 self.assertEqual("WEITER", result["livecircle"]["next_action"])
+                self.assertEqual("MATCHES_HANDOFF", result["recovery"]["context"]["state"])
+                self.assertEqual(["666DEV", project, "WEITER"],
+                                 result["recovery"]["project"]["native_next_command"])
                 self.assertEqual("CONFLICT_QUARANTINE", resume("demo-linked", handoff)["status"])
                 self.assertEqual("NO_DRIFT_EVIDENCE",
                                  json.loads(execute(["666DEV", project, "FUCK", "HORST", str(file)]))["status"])
@@ -58,7 +61,10 @@ class LiveCircleTests(unittest.TestCase):
                 self.assertIsNone(snapshot(project)["current"])
                 execute(["666DEV", project, "SYSTEMSTART"])
                 self.assertIn("working", resume(project, handoff)["changed_fields"])
-                self.assertEqual("PARTIAL", resume(project, handoff)["status"])
+                stale_context = resume(project, handoff)
+                self.assertEqual("PARTIAL", stale_context["status"])
+                self.assertEqual("REBUILD_FROM_NATIVE", stale_context["recovery"]["context"]["state"])
+                self.assertNotIn("inspection_command", stale_context["recovery"]["project"])
                 file.write_text(json.dumps(handoff), encoding="utf-8")
                 diagnosis = json.loads(execute(["666DEV", project, "FUCK", "HORST", str(file)]))
                 self.assertEqual("SUSPECTED_DRIFT", diagnosis["status"])
@@ -66,9 +72,27 @@ class LiveCircleTests(unittest.TestCase):
 
                 app = root / "projects" / project / "app"
                 (app / "dirty.txt").write_text("new local input", encoding="utf-8")
+                self.assertEqual(["666DEV", project, "IMPACT"],
+                                 resume(project, handoff)["recovery"]["project"]["inspection_command"])
                 dirty = snapshot(project)
                 self.assertEqual("PARTIAL", dirty["status"])
                 self.assertIsNone(dirty["next_action"])
+
+                core.git(root, "add", str(app / "dirty.txt"))
+                core.git(root, "commit", "-qm", "Change project source")
+                recovered = resume(project, handoff)
+                project_recovery = recovered["recovery"]["project"]
+                self.assertEqual("REVALIDATE_PROJECT", project_recovery["state"])
+                self.assertEqual(["666DEV", project, "IMPACT", handoff["source_commit"]],
+                                 project_recovery["inspection_command"])
+                self.assertEqual("VERIFIZIERT", project_recovery["impact"]["status"])
+                self.assertEqual(1, project_recovery["impact"]["changed_path_count"])
+                self.assertGreater(project_recovery["impact"]["checks_to_repeat"], 0)
+                unknown = resume(project, {**handoff, "source_commit": "a" * 40})
+                self.assertEqual("READBACK_PENDING", unknown["recovery"]["project"]["impact"]["status"])
+                self.assertEqual(["666DEV", project, "IMPACT"],
+                                 unknown["recovery"]["project"]["inspection_command"])
+                self.assertIsNone(snapshot(project)["current"])
 
                 _, project_dir = core.project_profile(project)
                 core.state_file(project_dir, "working.json").write_text("{}", encoding="utf-8")

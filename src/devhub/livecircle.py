@@ -7,6 +7,8 @@ import re
 
 from . import core
 from .desktop_impact import desktop_impact
+from .impact import project_impact
+from .recovery import assess_recovery
 
 KIND = "666dev-livecircle"
 VERSION = 1
@@ -64,25 +66,59 @@ def snapshot(project_id: str, *, desktop_base: str | None = None) -> dict:
     return record
 
 
-def resume(project_id: str, handoff: dict, *, observed: dict | None = None) -> dict:
+def resume(project_id: str, handoff: dict, *, observed: dict | None = None,
+           desktop_base: str | None = None) -> dict:
     """Compare a handoff with live state. Never apply data from the handoff."""
     if (not isinstance(handoff, dict) or handoff.get("kind") != KIND
             or type(handoff.get("schema_version")) is not int or handoff["schema_version"] != VERSION):
         raise core.DevhubError("Ungültiges 666DEV-Handoff-Format.")
     if handoff.get("authority") != "666DEV" or handoff.get("project_id") != project_id:
-        return {"status": "CONFLICT_QUARANTINE", "reason": "Projekt oder Autorität stimmt nicht überein."}
-    current = snapshot(project_id) if observed is None else observed
+        return {"status": "CONFLICT_QUARANTINE", "reason": "Projekt oder Autorität stimmt nicht überein.",
+                "recovery": assess_recovery("CONFLICT_QUARANTINE")}
+    current = snapshot(project_id, desktop_base=desktop_base) if observed is None else observed
     old_hub = handoff.get("hub_commit")
     if (current["desktop_impact"]["basis"] == "FIRST_PARENT" and isinstance(old_hub, str)
             and re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", old_hub) and old_hub != current["hub_commit"]):
         current = {**current, "desktop_impact": desktop_impact(core.ROOT, current["hub_commit"], old_hub)}
     if current["status"] in {"READBACK_PENDING", "CONFLICT_QUARANTINE"}:
-        return {"status": current["status"], "livecircle": current}
+        return {"status": current["status"], "livecircle": current,
+                "recovery": assess_recovery(current["status"])}
     keys = ("hub_commit", "profile_path", "profile_sha256", "source_mode", "source_commit", "working", "current", "return_anchor")
     changes = [key for key in keys if handoff.get(key) != current[key]]
-    if changes or handoff.get("working_tree_clean") is not True or not current["working_tree_clean"]:
-        return {"status": "PARTIAL", "changed_fields": changes, "livecircle": current}
-    return {"status": current["status"], "changed_fields": [], "livecircle": current}
+    previous_clean = handoff.get("working_tree_clean") is True
+    status = current["status"]
+    if changes or not previous_clean or current["working_tree_clean"] is not True:
+        status = "PARTIAL"
+    recovery = assess_recovery(status, current, changes, previous_clean=previous_clean)
+    if "source_commit" in changes:
+        recover_impact(project_id, handoff.get("source_commit"), current["source_commit"], recovery["project"])
+    return {"status": status, "changed_fields": changes, "livecircle": current, "recovery": recovery}
+
+
+def recover_impact(project_id: str, base: object, head: str, project: dict) -> None:
+    """Compare the project only when Git confirms the imported base is an ancestor."""
+    project["impact"] = {"status": "READBACK_PENDING"}
+    if not isinstance(base, str) or not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", base):
+        return
+    try:
+        state = core.rehydrate(project_id, initialize_demo=False)
+        if state["revision"]["commit"] != head:
+            return
+        core.git(state["source"], "merge-base", "--is-ancestor", base, head)
+        report = project_impact(state, base=base)
+        if core.git(state["source"], "rev-parse", "HEAD") != head:
+            return
+    except (core.DevhubError, OSError):
+        return
+    project["inspection_command"].append(base)
+    project["impact"] = {
+        "status": "VERIFIZIERT",
+        "base": report["base"],
+        "head": report["head"],
+        "changed_path_count": len(report["changed_paths"]),
+        "checks_to_repeat": sum(check["disposition"] == "RECHECK" for check in report["checks"]),
+        "fallback_reasons": report["fallback_reasons"],
+    }
 
 
 def hub_entry(*, update: bool = False) -> dict:
@@ -133,6 +169,7 @@ def diagnose(project_id: str | None = None, handoff: dict | None = None) -> dict
         return {**result, "status": "OBSERVED_DRIFT", "reason": "Nativer Pointer- oder Checkpoint-Konflikt."}
     if handoff is not None:
         comparison = resume(project_id, handoff, observed=observed)
+        result["recovery"] = comparison["recovery"]
         if comparison["status"] == "CONFLICT_QUARANTINE":
             return {**result, "status": "OBSERVED_DRIFT", "reason": comparison["reason"]}
         if comparison.get("changed_fields"):

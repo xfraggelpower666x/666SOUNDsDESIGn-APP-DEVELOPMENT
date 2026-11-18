@@ -23,6 +23,22 @@ sind getrennte Ergebnisse.
 - Setze am ersten fachlich und technisch freigegebenen offenen Schritt fort. Prüfe vor einem Wiederholungsversuch, ob ein Seiteneffekt bereits eingetreten ist. Sichere konkurrierende Stände und blockiere den betroffenen Schreibschritt bei einem Konflikt.
 - Halte im Handoff Ziel, beobachteten Commit, belegte Arbeit, offene Nachweise und die nächste ausführbare Aktion fest. Bei einem autorisierten Update sichere den Ausgangsstand und prüfe Zustandskörper und Referenzen. Schreibe den Current-Pointer zuletzt und lies ihn direkt zurück.
 
+## Recovery in der Praxis
+
+Verwende `NEXT-CHAT` für importierte Übergaben. Lies `recovery.context` für
+den Wiederaufbau des Arbeitskontexts und `recovery.project` für belegte
+Projektarbeit. Bei einem bestätigten Quellenwechsel liefert `impact` die
+Git-Basis und den Umfang der erneut fälligen Prüfungen. Führe den vorgeschlagenen
+lesenden `IMPACT` aus, wenn du die betroffenen Pfade und Prüfketten brauchst.
+Ein angebotener nativer Folgebefehl begründet keine Ausführung.
+
+| Befund im nativen Ergebnis | Vorgehen im Coding-Auftrag |
+| --- | --- |
+| `REBUILD_FROM_NATIVE` | Rekonstruiere den Chatkontext aus Registry, Profil, Revision und aktuellen Pointern. Prüfe die zuletzt belegte Nebenwirkung vor einer Wiederholung. |
+| `REVALIDATE_PROJECT` | Verwende Ursachenanalyse und Repo-Analyse. Folge den betroffenen Pfaden bis zur Prüfung. Bei unvollständiger Zuordnung verwende den breiteren vom Projekt vorgegebenen Prüfumfang. |
+| Bestätigter Projektfehler und Reparaturauftrag | Nutze den bestehenden Projektpfad über `CODEFORGE`. Wende einen belegten Patch im beauftragten Umfang über `PATCH-APPLY` an. Verifiziere Korrektur und Regression am betroffenen Einstieg. |
+| `CONFLICT_QUARANTINE` oder `READBACK_PENDING` | Benenne den fehlenden oder widersprüchlichen Nachweis. Prüfe zuerst Quelle und Scope. |
+
 ## Arbeitsstränge und Peer-Handoffs
 
 - Halte pro Arbeitsstrang Basisrevision, Dateibesitz, Abhängigkeiten, letzten belegten Schritt, Status und Rückkehranker fest. Bei Unterbrechung sichere die Arbeitsposition vor einem Kontextwechsel. Führe unabhängige Arbeiten innerhalb des Auftrags weiter, wenn ein Strang blockiert ist.
