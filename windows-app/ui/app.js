@@ -3,6 +3,7 @@ const message = get("message");
 const output = get("output");
 let csrf;
 let busy = false;
+let chatArchiveBusy = false;
 let confirmedProject;
 
 async function request(path, data) {
@@ -29,6 +30,7 @@ async function initialize() {
     for (const project of state.projects) get("project").add(new Option(project, project));
     if (!document.querySelector('[data-panel="livecircle"]').hidden) refreshCircle();
     if (!document.querySelector('[data-panel="visualforms"]').hidden) openVisualforms();
+    if (!document.querySelector('[data-panel="chat-archive"]').hidden) runChatArchive({action: "SEARCH"});
   } catch (error) {
     get("local-state").textContent = "Nicht erreichbar";
     message.textContent = error.message;
@@ -89,6 +91,7 @@ for (const button of document.querySelectorAll("[data-view]")) {
     for (const panel of document.querySelectorAll("[data-panel]")) panel.hidden = panel.dataset.panel !== button.dataset.view;
     if (button.dataset.view === "livecircle") refreshCircle();
     if (button.dataset.view === "visualforms") openVisualforms();
+    if (button.dataset.view === "chat-archive") runChatArchive({action: "SEARCH"});
     if (button.dataset.view === "dashboard") {
       const project = encodeURIComponent(get("project").value);
       get("dashboard-frame").src = "/dashboard/?project=" + project;
@@ -144,6 +147,56 @@ function downloadText(content, name, type) {
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+async function runChatArchive(data) {
+  const status = get("chat-status");
+  if (chatArchiveBusy) return;
+  if (!csrf) {
+    status.textContent = "Die lokale Anwendungssitzung wird noch aufgebaut.";
+    return;
+  }
+  const buttons = document.querySelectorAll('[data-panel="chat-archive"] button');
+  chatArchiveBusy = true;
+  for (const button of buttons) button.disabled = true;
+  status.textContent = data.action === "IMPORT" ? "Export wird eingelesen …" : "";
+  try {
+    const result = await request("/api/chat-archive", data);
+    if (data.action === "IMPORT") {
+      get("chat-path").value = "";
+      get("chat-results").replaceChildren();
+      status.textContent = `${result.added} neu · ${result.unchanged} bereits vorhanden · ${result.skipped} übersprungen. Wähle Suchen, um das Archiv zu öffnen.`;
+    } else if (data.action === "EXPORT") {
+      downloadText(result.markdown, `666dev-chat-${data.key.slice(0, 12)}.md`, "text/markdown");
+      status.textContent = "Markdown-Export erstellt.";
+    } else {
+      const items = result.results.map(chat => {
+        const item = document.createElement("li");
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = "Markdown exportieren";
+        button.addEventListener("click", () => runChatArchive({action: "EXPORT", key: chat.key}));
+        item.append(`${chat.title} · ${chat.turns} Nachrichten · ${chat.characters} Zeichen · ${chat.source} `, button);
+        return item;
+      });
+      get("chat-results").replaceChildren(...items);
+      status.textContent = result.more ? "50 Treffer angezeigt. Suche bei Bedarf weiter eingrenzen."
+        : `${items.length} Treffer.`;
+    }
+  } catch (error) {
+    status.textContent = error.message;
+  } finally {
+    for (const button of buttons) button.disabled = false;
+    chatArchiveBusy = false;
+  }
+}
+get("chat-import").addEventListener("submit", event => {
+  event.preventDefault();
+  runChatArchive({action: "IMPORT", path: get("chat-path").value.trim().replace(/^"(.*)"$/, "$1")});
+});
+get("chat-search").addEventListener("submit", event => {
+  event.preventDefault();
+  runChatArchive({action: "SEARCH", query: get("chat-query").value});
+});
 
 let livecircleRequest = 0;
 

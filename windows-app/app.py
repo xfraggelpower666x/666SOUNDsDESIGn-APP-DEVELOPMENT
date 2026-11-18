@@ -22,6 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from devhub.core import DevhubError, atomic_json, dashboard_data, project_entries, read_json
+from devhub.chat_archive import export_markdown, import_archive, search_archive
 from devhub.livecircle import resume, snapshot
 from devhub import repo_mind
 from devhub.repo_mind_context import inspect_sources
@@ -148,6 +149,20 @@ def repo_mind_action(data):
     raise ValueError("Unbekannte Repo-Mind-Aktion.")
 
 
+def chat_archive_action(data):
+    action = data.get("action")
+    if action == "SEARCH":
+        return search_archive(ROOT, data.get("query", ""))
+    if action == "EXPORT":
+        return {"markdown": export_markdown(ROOT, data.get("key"))}
+    if action == "IMPORT":
+        value = data.get("path")
+        if not isinstance(value, str) or not Path(value).is_absolute() or value.startswith(("//", "\\\\")):
+            raise ValueError("Vollständigen lokalen Pfad zur Exportdatei angeben.")
+        return import_archive(ROOT, Path(value))
+    raise ValueError("Unbekannte Chat-Archiv-Aktion.")
+
+
 class ControlServer(ThreadingHTTPServer):
     def __init__(self, port):
         super().__init__(("127.0.0.1", port), Handler)
@@ -256,6 +271,8 @@ class Handler(BaseHTTPRequestHandler):
                 report = (resume(project, data["handoff"], desktop_base=base) if "handoff" in data
                           else snapshot(project, desktop_base=base))
                 self.json(200, report)
+            elif route == "/api/chat-archive":
+                self.json(200, chat_archive_action(data))
             elif route == "/api/repo-mind":
                 with self.server.operation:
                     self.json(200, repo_mind_action(data))

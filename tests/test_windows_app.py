@@ -84,6 +84,28 @@ class WindowsAppTest(unittest.TestCase):
         self.assertEqual(200, status)
         self.assertIn("Projektquelle offen", empty.decode())
 
+    def test_chat_archive_requires_local_session_and_shares_the_core_index(self):
+        _, headers = self.session()
+        self.assertIn(b"Chat-Archiv", self.request("/")[1])
+        route = "/api/chat-archive"
+        self.assertEqual(403, self.request(route, {"action": "SEARCH"})[0])
+        scope = self.config.parent
+        source = scope / "local-export.json"
+        source.write_text(json.dumps({
+            "object": "chatgpt.export",
+            "data": [{"id": "test-1", "title": "Test",
+                      "messages": [{"role": "user", "content": "Lokaler Suchbeleg"}]}],
+        }), encoding="utf-8")
+        with patch.object(app, "ROOT", scope):
+            self.assertEqual(400, self.request(route, {"action": "IMPORT", "path": source.name}, **headers)[0])
+            status, body = self.request(route, {"action": "IMPORT", "path": str(source)}, **headers)
+            self.assertEqual(200, status)
+            self.assertEqual(1, json.loads(body)["added"])
+            key = app.search_archive(scope, "suchbeleg")["results"][0]["key"]
+            status, body = self.request(route, {"action": "EXPORT", "key": key}, **headers)
+            self.assertEqual(200, status)
+            self.assertIn("Lokaler Suchbeleg", json.loads(body)["markdown"])
+
     def test_visual_handoff_binds_the_form_to_the_native_revision(self):
         project = "demo-monorepo"
         revision = app.snapshot(project)["source_commit"]

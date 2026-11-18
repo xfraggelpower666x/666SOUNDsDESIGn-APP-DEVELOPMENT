@@ -16,6 +16,7 @@
       <button data-view="visualforms" aria-pressed="false">Visualformen</button>
       <button data-view="livecircle" aria-pressed="false">LiveCircle</button>
       <button data-view="repo-mind" aria-pressed="false">Repo Mind</button>
+      <button data-view="chat-archive" aria-pressed="false">Chat-Archiv</button>
       <button data-view="settings" aria-pressed="false">Einstellungen</button>
     </nav>
   </header>
@@ -105,6 +106,23 @@
       <pre id="mind-output" tabindex="0">Aktion auswählen.</pre>
       <h3 id="mind-diff-heading" hidden>Geprüfter Diff</h3>
       <pre id="mind-diff" tabindex="0" hidden></pre>
+    </section>
+    <section data-panel="chat-archive" class="pane" hidden>
+      <h2>Chat-Archiv</h2>
+      <div class="mind-layout">
+        <form id="chat-import">
+          <label for="chat-path">Vollständiger Pfad zum lokalen Chat-Export (.zip oder .json)</label>
+          <input id="chat-path" required maxlength="2048" autocomplete="off" spellcheck="false" placeholder="C:\Users\…\Downloads\chat-export.zip">
+          <button type="submit">Importieren</button>
+        </form>
+        <form id="chat-search">
+          <label for="chat-query">Titel und Nachrichten durchsuchen</label>
+          <input id="chat-query" type="search" maxlength="500" autocomplete="off">
+          <button type="submit">Suchen</button>
+        </form>
+      </div>
+      <p id="chat-status" role="status"></p>
+      <ol id="chat-results"></ol>
     </section>
     <section data-panel="settings" class="pane settings" hidden>
       <form id="settings-form">

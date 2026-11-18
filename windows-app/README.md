@@ -72,3 +72,9 @@ Unter **Einstellungen** kannst du für den eingestellten GitHub-Branch
 einen vollständigen erwarteten Commit eingeben. Ein erfolgreicher
 Abgleich bestätigt den Branch-Stand zum Abrufzeitpunkt. Tests und
 Deployment haben eigene Nachweise.
+
+## Chat-Archiv
+
+Im Tab **Chat-Archiv** den vollständigen lokalen Pfad zu einem ChatGPT- oder
+AI-Exporter-Download einfügen und importieren. Die Suche und der Markdown-Export
+nutzen denselben lokalen Index wie die CLI. [Formate und Speicherpfad](../docs/chat-archive.md).
