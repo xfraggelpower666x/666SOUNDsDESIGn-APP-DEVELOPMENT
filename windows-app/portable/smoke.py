@@ -68,8 +68,11 @@ def test_package(package: Path, expected_revision: str) -> None:
             archive.extractall(working)
         install = working / "666DEV Windows x64"
         exe = install / "666DEV.exe"
+        starter = install / "STARTEN.bat"
         info = json.loads((install / "BUILD-INFO.json").read_text(encoding="utf-8"))
         assert info["commit"] == expected_revision, info
+        assert info["entrypoints"]["batch"] == starter.name, info
+        assert (install / "ARCHITEKTUR.md").is_file()
         # Ein fremdes Arbeitsverzeichnis sowie Leerzeichen in allen Bundle-Pfaden.
         # Kein vorinstalliertes Git oder Python bei der Werkzeugauflösung.
         env = {**os.environ, "PATH": str(Path(os.environ["SystemRoot"]) / "System32")}
@@ -82,9 +85,33 @@ def test_package(package: Path, expected_revision: str) -> None:
         for relative in ("runtime/git/cmd/git.exe", "runtime/gh/bin/gh.exe"):
             subprocess.run([install / relative, "--version"], cwd=working, env=env, check=True, timeout=25)
 
+        shell = Path(os.environ["SystemRoot"]) / "System32" / "cmd.exe"
+
+        def batch(action: str) -> str:
+            return f'"{shell}" /d /s /v:off /c ""{starter}" {action}"'
+
+        def run_batch(action: str, *, check: bool = True):
+            return subprocess.run(batch(action), executable=shell, cwd=working, env=env,
+                                  check=check, capture_output=True, text=True, timeout=25)
+
+        assert json.loads(run_batch("--check").stdout)["git_commit"] == expected_revision
+        report = run_batch("--diagnose")
+        reports = list((install / "checkout" / ".work" / "windows-app" / "logs").glob("diagnose-*.log"))
+        assert len(reports) == 1 and expected_revision in reports[0].read_text(encoding="ascii", errors="replace")
+        assert "Diagnostic log:" in report.stdout, report.stdout
+        assert run_batch("--invalid", check=False).returncode == 2
+        python = install / "runtime" / "python" / "python.exe"
+        detached = python.with_suffix(".disabled")
+        python.rename(detached)
+        try:
+            failed = run_batch("--check", check=False)
+            assert failed.returncode == 1, failed
+        finally:
+            detached.rename(python)
+
         log = working / "startup.log"
         with log.open("wb") as output, subprocess.Popen(
-            [exe, "--no-window", "--port", "0"], cwd=working, env=env, stdout=output, stderr=subprocess.STDOUT
+            batch("--headless"), executable=shell, cwd=working, env=env, stdout=output, stderr=subprocess.STDOUT
         ) as process:
             try:
                 exercise(wait_for_origin(process, log), working, expected_revision)
@@ -93,7 +120,7 @@ def test_package(package: Path, expected_revision: str) -> None:
                     subprocess.run(["taskkill.exe", "/F", "/T", "/PID", str(process.pid)],
                                    capture_output=True, timeout=20, check=False)
                     process.wait(timeout=10)
-        print("Windows Portable: EXE, Diagnose, CLI, Repo Mind und Archiv-Rundlauf bestanden.")
+        print("Windows Portable: Batch, EXE, Diagnoseprotokoll, CLI und Archiv-Rundlauf bestanden.")
 
 
 if __name__ == "__main__":

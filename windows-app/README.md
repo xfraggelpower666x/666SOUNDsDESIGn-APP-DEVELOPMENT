@@ -2,13 +2,17 @@
 
 ## Portable Windows-x64-Ausgabe
 
-`666DEV-Windows-x64.zip` vollständig entpacken und **666DEV.exe** starten.
+`666DEV-Windows-x64.zip` vollständig entpacken und **STARTEN.bat** öffnen.
+Im Menü **1** für den Start wählen. **666DEV.exe** ist der direkte Einstieg.
 Das Paket enthält den Git-Checkout, Python, MinGit und die GitHub CLI. Für
 die lokale Nutzung werden keine vorhandenen Python- oder Git-Installationen
 benötigt. Für GitHub-Schreibaktionen bleibt eine eigene CLI-Anmeldung erforderlich.
 Die Anwendung verwendet die gewohnte lokale Oberfläche im Edge-App-Modus.
 
-In PowerShell prüft `.\666DEV.exe --check` den portablen Startpfad und die Revision.
+In PowerShell prüft `.\STARTEN.bat --check` den portablen Startpfad und die Revision.
+`.\STARTEN.bat --diagnose` schreibt ein Protokoll unter
+`checkout/.work/windows-app/logs/`. Die [Windows-Architektur](ARCHITEKTUR.md)
+liegt im ZIP direkt neben dem Starter.
 Lokale Daten liegen im entpackten Ordner unter `checkout/.work/`. Beim Wechsel
 zu einem neuen Paket kann dieser Ordner nach beendetem Programm übernommen werden.
 

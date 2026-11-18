@@ -101,7 +101,12 @@ def build(output: Path, cache: Path, go: str) -> Path:
         for notice in ("LICENSE", "PATENTS"):
             shutil.copyfile(go_root / notice, stage / f"GO-{notice}.txt")
         shutil.copyfile(launcher.with_name("START-HERE.txt"), stage / "START-HERE.txt")
+        batch = launcher.with_name("STARTEN.bat").read_text(encoding="ascii")
+        (stage / "STARTEN.bat").write_text(batch, encoding="ascii", newline="\r\n")
+        architecture = launcher.parent.parent / "ARCHITEKTUR.md"
+        shutil.copyfile(architecture, stage / architecture.name)
         info = {"commit": revision, "platform": "windows-amd64", "launcher_go": version,
+                "entrypoints": {"batch": "STARTEN.bat", "executable": "666DEV.exe"},
                 "runtimes": {name: {"url": url, "sha256": checksum}
                              for name, (url, checksum) in RUNTIMES.items()}}
         (stage / "BUILD-INFO.json").write_text(json.dumps(info, indent=2) + "\n", encoding="utf-8")

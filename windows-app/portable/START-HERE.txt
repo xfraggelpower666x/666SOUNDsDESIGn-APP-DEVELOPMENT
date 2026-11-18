@@ -2,14 +2,18 @@
 666SOUNDsDESIGn / FRAGGLEPOWER666
 
 1. Entpacke das gesamte ZIP in einen Ordner mit Schreibrechten.
-2. Starte 666DEV.exe im entpackten Ordner.
+2. Öffne STARTEN.bat und wähle [1] Start 666DEV.
 3. Öffne Repo Mind > Chat-Archiv für lokale ChatGPT- und AI-Exporter-Importe.
 
 Die Konsole offen lassen. Strg+C beendet die Anwendung.
 666DEV nutzt den Edge-App-Modus, wenn Edge verfügbar ist. Andernfalls
 öffnet der vorhandene Launcher die Oberfläche im Standardbrowser.
 
-Diagnose in PowerShell: .\666DEV.exe --check
+Direktstart: 666DEV.exe oder .\STARTEN.bat --run
+Prüfung: .\STARTEN.bat --check
+Diagnose mit Protokoll: .\STARTEN.bat --diagnose
+Protokolle: checkout\.work\windows-app\logs
+Komponenten, Daten und Wiederaufbau: ARCHITEKTUR.md
 Das Paket enthält Python, MinGit, GitHub CLI und den 666DEV-Checkout.
 Für GitHub-Aktionen mit Schreibzugriff ist eine eigene gh-Anmeldung nötig.
 Der lokale Stand liegt in checkout\.work. Sichere diesen Ordner, wenn du
