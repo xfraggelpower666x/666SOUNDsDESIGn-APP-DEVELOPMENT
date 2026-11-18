@@ -54,3 +54,28 @@ beiden Branch-Namen sind damit kein Beleg für neue Migration- oder Research-Ski
   nach dem belegten Befund. Das Plugin-Paket verwendet denselben Vertrag.
 - `tests/test_livecircle.py` und `tests/test_windows_app.py` prüfen den Einstieg
   über CLI und HTTP. Der native Windows-Start ist eine gesonderte Abnahme.
+
+## Nachprüfung mit Coding Profi 0.80.0 und den zusätzlichen Uploads
+
+`L.Y.V.R.A. CODING PROFI (5).zip` enthält Plugin-Version 0.80.0. Verglichen
+mit dem für 666DEV gepinnten Paket (3) mit Version 0.75.0 enthält ZIP (5)
+225 Dateien. 189 davon sind unverändert, 28 geändert, acht neu und keine
+entfernt. Der Vergleich beruht auf ZIP-Mitgliedspfaden und Dateiinhalten.
+Die Integration übernimmt gezielte Mechanismen in den 666DEV-Kern.
+
+| Quelle oder Dateigruppe | Relevanz, Integration und Grenzen |
+| --- | --- |
+| `skills/sceeri-agentenlauf-chat/scripts/check_run_evidence.py` und zugehörige Tests | Sollvertrag, tatsächlicher Prozesszustand und Auslieferungsartefakte auseinanderhalten. Native 666DEV-Profile liefern den Sollbefehl. 666DEV zeichnet Prozesszustand, Exitcode, Quelle und Profilfingerabdruck auf. Der LiveCircle wertet passende Belege aus. SHA-256 für konkrete Auslieferungsartefakte gehört weiterhin zum eigenständigen Freeze-Vertrag. |
+| `skills/sceeri-coding-profi-livecircle/scripts/checkpoint_review.py`, `tests/test_git_rehydration.py` und `references/checkpoint.md` | Git- und Abhängigkeitsprüfung vor Wiederaufnahme. Die Vorgängerprüfung und gezielte Auswirkungsanalyse liegen bereits in 666DEV. Der neue Guard hält Ergebnisse aus isolierten Patch-Worktrees aus der Abnahme des echten Quellstands heraus. Die Strang- und Ereignisschemata des Quellplugins sind für dessen eigene Checkpoints spezifiziert. |
+| `skills/sceeri-code-converter/scripts/compare_trx.py` und `tests/test_compare_trx.py` | Testmigration und Testmengenparität mit Vorher-/Nachher-TRX sind für .NET-Aufträge relevant. Die registrierten 666DEV-Demos laufen über Python. Ein natives .NET-Profil mit TRX-Ausgaben wäre der passende Integrationspunkt. |
+| `references/windows-starten-build.md`, ToolStarter-Wrapper, `packaging_tools.py`, `toolstarter.py` und Starter-Vertragstest | Relevante Toolchain-Diagnose und getrennte Setup-/Portable-Abnahmen. Als Kandidaten für den Windows-Starter geführt. Der bestehende 666DEV-Starter besitzt einen eigenen Aufrufvertrag. Ein Austausch erfordert Kompatibilitätsnachweise unter Windows. |
+| Weitere geänderte SKILL.md und Referenzen zu App-Code, Engineering, Self-Healing, Research, Testing und Electron | Relevanz als Fachmethoden innerhalb passender Aufgaben. Für diesen Schritt übernimmt der 666DEV-Vertrag die Diagnose anhand von realer Ausführung und den revisionsgebundenen Prüfeinstieg. |
+| `openai.yaml` | Gegen die vorhandene ToolStarter-Definition im Paket geprüft. Die Zusatzdatei ergänzt `policy.products` um vier Hostnamen. Das ist Host-Metadatenänderung ohne Effekt auf den nativen Build- oder Recovery-Ablauf. |
+| Agents Python (2)/(3), Agent Skills (3), Node (1), Simple Evals (2), MLE-bench (2), Gym (2) und Swarm (2) | Vollständiger ZIP-SHA-256-Abgleich mit den früheren Snapshots ergibt Bytegleichheit. Run-State und Handoff-Filter, getrennte Evaluations-Sollwerte und Zustandsübergänge bleiben methodisch relevant. Der lokale Recovery-Pfad hat keine SDK- oder Benchmark-Runtime-Abhängigkeit. |
+| Die drei zusätzlichen OpenAI-Python-ZIPs | Jede Datei ist bytegleich zu einem der zwei schon auditierten Snapshots. Zwischen den zwei verschiedenen Snapshots gibt es vier zusätzliche und 94 inhaltlich geänderte Dateien. Darunter sind Tests für Stream-Modus sowie Budget-, Fehler- und Transportereignisse. Deren Behandlung ist für einen entsprechenden Provider-Adapter relevant. Der 666DEV-Prüfpfad beruht auf lokalen Prozesszuständen. |
+
+Die zusätzliche Laufzeitintegration liegt in `run_acceptance`, der
+revisionsgebundenen Auswertung des LiveCircle und der Windows-Anzeige.
+Die Gegenproben decken einen echten Exitcode 7, einen fehlenden Prozess,
+einen bestandenen Befehl, abweichende Revision, geändertes Profil,
+einen isolierten Kandidaten und eine unzulässige Handoff-Behauptung ab.

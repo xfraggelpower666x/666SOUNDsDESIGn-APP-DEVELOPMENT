@@ -1,14 +1,12 @@
 """Portable continuation records derived from the native 666DEV state."""
 from __future__ import annotations
 
-import hashlib
-import json
 import re
 
 from . import core
 from .desktop_impact import desktop_impact
 from .impact import project_impact
-from .recovery import assess_recovery
+from .recovery import assess_recovery, profile_fingerprint, summarize_acceptance
 
 KIND = "666dev-livecircle"
 VERSION = 1
@@ -25,7 +23,7 @@ def snapshot(project_id: str, *, desktop_base: str | None = None) -> dict:
         "project_id": project_id,
         "profile_path": core.project_entries()[project_id],
         "source_mode": profile["source_mode"],
-        "profile_sha256": hashlib.sha256(json.dumps(profile, sort_keys=True).encode()).hexdigest(),
+        "profile_sha256": profile_fingerprint(profile),
         "source_commit": None,
         "working_tree_clean": None,
         "working": None,
@@ -53,12 +51,14 @@ def snapshot(project_id: str, *, desktop_base: str | None = None) -> dict:
     if state["working"]:
         record["return_anchor"] = state["working"]["checkpoint"].get("return_anchor")
     record["status"] = view["revision_status"]
+    results = state["working"]["checkpoint"]["results"] if state["working"] else []
     if state["working"]:
-        results = state["working"]["checkpoint"]["results"]
         record["evidence"] = {
             "total": len(results),
             "at_source_commit": sum(item.get("commit") == view["commit"] for item in results),
         }
+    record["acceptance"] = summarize_acceptance(profile, view["commit"], results,
+                                                clean=record["working_tree_clean"])
     if not record["working_tree_clean"]:
         record["status"] = "PARTIAL"
     else:

@@ -117,6 +117,27 @@ fehlende oder divergierende Vergleichsbasis bleibt `READBACK_PENDING`.
 Der JSON-Handoff bleibt im Format v1. Die Recovery-Entscheidung entsteht bei
 jedem Import aus der aktuellen Quelle.
 
+## Abnahmebelege im LiveCircle
+
+`acceptance` zählt pro konfiguriertem Test- oder Build-Befehl den jüngsten
+passenden Ausführungsbeleg. Gezählt werden bestandene und fehlgeschlagene
+Prozesse, blockierte Starts oder Zeitüberschreitungen und offene Belege.
+Ein Exitcode wird direkt vom Prozess erfasst. Der Bericht verwendet dieselbe
+Profil-SHA-256, Revision und Plattform wie der aktuelle Projektstand. Testbelege
+erfordern einen sauberen Arbeitsbaum und passenden HEAD vor und nach dem
+Lauf. Buildbelege stammen aus der vorhandenen isolierten Kopie des Commits.
+Ein Test im Patch-Worktree und ein Start aus dem Freeze-Archiv bleiben
+Belege für ihre jeweils eigene Ausführung. Historische Checkpoints bleiben
+lesbar. Alte, unstrukturierte Einzelbelege erscheinen bis zur Gegenprobe
+als offen. Ein aus einer Übergabe importiertes Ergebnis wird neu ermittelt.
+
+Bei einer passenden fehlgeschlagenen oder blockierten Ausführung leitet
+`DIAGNOSE_ACCEPTANCE` lesend zum Projektstatus. Dort die letzte tatsächliche
+Ausführung prüfen. Ein abgeschlossener Prozess mit Fehlercode stützt eine
+andere Diagnose als ein fehlender Prozess oder ein Timeout. Bei einem
+geänderten Projektstand hat die Auswirkungsprüfung Vorrang. Die frische
+Abnahme vor einer Current-Freigabe bleibt maßgeblich.
+
 ## Nutzung im Chat
 
 Bei einem direkten 666DEV-Auftrag zuerst den vom Nutzer gewählten Branch und

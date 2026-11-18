@@ -121,7 +121,9 @@ async function refreshCircle({handoff, download = false} = {}) {
   const requestId = ++livecircleRequest;
   const panel = get("livecircle-output");
   const recoveryPanel = get("livecircle-recovery");
+  const acceptancePanel = get("livecircle-acceptance");
   recoveryPanel.textContent = "";
+  acceptancePanel.textContent = "";
   get("desktop-impact-status").textContent = "";
   get("livecircle-project").textContent = project;
   try {
@@ -132,6 +134,15 @@ async function refreshCircle({handoff, download = false} = {}) {
     const result = JSON.stringify(snapshot, null, 2);
     if (requestId !== livecircleRequest || get("project").value !== project) return;
     panel.textContent = result;
+    const native = snapshot.livecircle || snapshot;
+    if (native.acceptance) {
+      acceptancePanel.textContent = Object.entries({test: "Tests", build: "Builds"})
+        .map(([kind, label]) => {
+          const {passed, failed, blocked, pending} = native.acceptance[kind];
+          if (!(passed || failed || blocked || pending)) return "";
+          return `${label} · ${passed} bestanden · ${failed} fehlgeschlagen · ${blocked} blockiert · ${pending} offen`;
+        }).filter(Boolean).join(" | ");
+    }
     const recovery = snapshot.recovery;
     if (recovery) {
       const contextMessages = {
@@ -143,13 +154,16 @@ async function refreshCircle({handoff, download = false} = {}) {
       const command = recovery.project.inspection_command || recovery.project.native_next_command;
       recoveryPanel.textContent = [
         contextMessages[recovery.context.state],
+        recovery.project.state === "DIAGNOSE_ACCEPTANCE"
+          ? "Prüfergebnis und tatsächlichen Start des Prüfbefehls im Projektstatus klären."
+          : "",
         recovery.project.impact?.status === "VERIFIZIERT"
           ? `${recovery.project.impact.changed_path_count} geänderte Projektpfade, ${recovery.project.impact.checks_to_repeat} erneute Prüfungen vorgeschlagen.`
           : "",
         command ? `Nächster Vorschlag: ${command.join(" ")}` : "",
       ].filter(Boolean).join(" ");
     }
-    const impact = (snapshot.livecircle || snapshot).desktop_impact;
+    const impact = native.desktop_impact;
     const desktopMessages = {
       WINDOWS_REVIEW_REQUIRED: "Windows-App prüfen. Die betroffenen Funktionen stehen im Bericht.",
       NO_IMPACT_IN_DIFF: "Im verglichenen Git-Bereich ist keine Windows-Auswirkung erkennbar.",
@@ -175,6 +189,7 @@ get("import-handoff").addEventListener("change", async event => {
     await refreshCircle({handoff: JSON.parse(await file.text())});
   } catch (error) {
     get("livecircle-recovery").textContent = "";
+    get("livecircle-acceptance").textContent = "";
     get("livecircle-output").textContent = error.message;
   }
 });

@@ -148,7 +148,7 @@ def _checkpoint_action(project_id: str, action: str) -> dict:
             isolated_source = (worktree / source_relative).resolve()
             if not isolated_source.is_relative_to(worktree):
                 raise DevhubError("WRITE_BLOCKED: isolated project path escapes worktree.")
-            checks = run_acceptance(profile, isolated_source, commit)
+            checks = run_acceptance(profile, isolated_source, commit, source_kind="isolated_candidate")
             graph = python_graph(isolated_source, profile, commit)
             evidence.extend(checks)
             passed = (all(item["status"] == "VERIFIZIERT" for item in checks)
@@ -206,6 +206,13 @@ def render_status(project_id: str | None = None) -> str:
         lines.append(f"{item['id']}: {item['name']} | {item['source_mode']} | {item['revision_status']} | "
                      f"HEAD {item['commit'][:12]} | Current {(item['current_commit'] or 'OFFEN')[:12]} | "
                      f"next: {item['next_step']}")
+        if project_id:
+            report = snapshot(selected)
+            for kind, lane in report.get("acceptance", {}).items():
+                for issue in lane["issues"]:
+                    exit_code = issue["exit_code"]
+                    detail = f"Exitcode {exit_code}" if exit_code is not None else issue["state"]
+                    lines.append(f"  {kind}_commands[{issue['command_index'] - 1}]: {detail}")
     return "\n".join(lines)
 
 

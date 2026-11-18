@@ -5,9 +5,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from devhub import core
+from devhub import cli, core
 from devhub.cli import execute
 from devhub.livecircle import resume, snapshot
+from devhub.recovery import assess_recovery, summarize_acceptance
 
 
 class LiveCircleTests(unittest.TestCase):
@@ -23,7 +24,7 @@ class LiveCircleTests(unittest.TestCase):
             core.git(root, "add", ".")
             core.git(root, "commit", "-qm", "Baseline")
             with patch.multiple(core, ROOT=root, REGISTRY=root / "registry" / "projects.json",
-                                WORK=root / ".work"):
+                                WORK=root / ".work"), patch.object(cli, "ROOT", root):
                 project = "demo-monorepo"
                 self.assertEqual("READBACK_PENDING", snapshot("demo-linked")["status"])
                 self.assertEqual("OFFEN", snapshot(project)["status"])
@@ -71,6 +72,39 @@ class LiveCircleTests(unittest.TestCase):
                 self.assertIn("working", diagnosis["changed_fields"])
 
                 app = root / "projects" / project / "app"
+                profile, project_dir = core.project_profile(project)
+                clean_profile = {**profile, "test_commands": [
+                    ["python", "-c", "raise SystemExit(7)"],
+                    ["666dev-nonexistent-executable"],
+                    ["python", "-c", "pass"],
+                ]}
+                head = core.git(app, "rev-parse", "HEAD")
+                native = core.run_acceptance(clean_profile, app, head)
+                isolated = core.run_acceptance(clean_profile, app, head, source_kind="isolated_candidate")
+                old_receipt = {k: v for k, v in native[-1].items() if k != "execution"}
+                self.assertEqual([7, None, 0], [item["execution"]["exit_code"] for item in native])
+                self.assertEqual("launch_error", native[1]["execution"]["state"])
+                summary = summarize_acceptance(clean_profile, head, [*native, *isolated, old_receipt], clean=True)
+                self.assertEqual({"passed": 1, "failed": 1, "blocked": 1, "pending": 0},
+                                 {k: summary["test"][k] for k in ("passed", "failed", "blocked", "pending")})
+                self.assertEqual([7, None], [issue["exit_code"] for issue in summary["test"]["issues"]])
+                before = snapshot(project)
+                diagnosis_plan = assess_recovery("VERIFIZIERT", {**before, "acceptance": summary})
+                self.assertEqual("DIAGNOSE_ACCEPTANCE", diagnosis_plan["project"]["state"])
+                self.assertEqual("STATUS", diagnosis_plan["project"]["inspection_command"][-1])
+                self.assertEqual(3, summarize_acceptance(clean_profile, head, isolated, clean=True)["test"]["pending"])
+                self.assertEqual(3, summarize_acceptance(clean_profile, head, native, clean=False)["test"]["pending"])
+                self.assertEqual(3, summarize_acceptance(clean_profile, "a" * 40, native, clean=True)["test"]["pending"])
+                with patch("devhub.recovery.sys.platform", "other-os"):
+                    self.assertEqual(3, summarize_acceptance(clean_profile, head, native, clean=True)["test"]["pending"])
+                changed_profile = {**clean_profile, "name": "Changed profile"}
+                self.assertEqual(3, summarize_acceptance(changed_profile, head, native, clean=True)["test"]["pending"])
+                execute(["666DEV", project, "CODEFORGE"])
+                same_handoff = snapshot(project)
+                self.assertGreater(same_handoff["acceptance"]["test"]["passed"], 0)
+                forged = {**same_handoff, "acceptance": {"test": {"passed": 999}}}
+                self.assertEqual(same_handoff["acceptance"], resume(project, forged)["livecircle"]["acceptance"])
+
                 (app / "dirty.txt").write_text("new local input", encoding="utf-8")
                 self.assertEqual(["666DEV", project, "IMPACT"],
                                  resume(project, handoff)["recovery"]["project"]["inspection_command"])

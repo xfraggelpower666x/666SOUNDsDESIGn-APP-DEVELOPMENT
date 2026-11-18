@@ -406,12 +406,26 @@ def clean_source(source: Path) -> bool:
 
 
 def run_acceptance(profile: dict[str, Any], source: Path, revision: str, *,
-                   kind: str = "test") -> list[dict[str, Any]]:
+                   kind: str = "test", source_kind: str = "checkout") -> list[dict[str, Any]]:
+    from .recovery import command_display, profile_fingerprint
+
     evidence = []
+    profile_hash = profile_fingerprint(profile)
+
+    def clean_revision() -> bool:
+        try:
+            return git(source, "rev-parse", "HEAD") == revision and clean_source(source)
+        except DevhubError:
+            return False
+
     key = {"test": "test_commands", "build": "build_commands", "start": "start_commands"}[kind]
     commands = profile.get(key, [])
     for configured in commands:
-        display = configured if isinstance(configured, str) else json.dumps(configured, ensure_ascii=False)
+        display = command_display(configured)
+        clean_before = source_kind == "checkout" and clean_revision()
+        receipt = {"source_kind": source_kind, "profile_sha256": profile_hash,
+                   "clean_revision": False, "platform": sys.platform,
+                   "exit_code": None, "state": "invalid_command"}
         try:
             command = shlex.split(configured, posix=os.name != "nt") if isinstance(configured, str) else list(configured)
         except ValueError:
@@ -420,6 +434,8 @@ def run_acceptance(profile: dict[str, Any], source: Path, revision: str, *,
             evidence.append(make_evidence(kind, display, revision,
                                           f"{sys.platform}; Python {sys.version.split()[0]}",
                                           "Configured acceptance command is empty.", "BLOCKIERT"))
+            receipt["clean_revision"] = clean_before
+            evidence[-1]["execution"] = receipt
             continue
         if command and Path(command[0]).name.lower() in {"python", "python3", "python.exe"}:
             command[0] = sys.executable
@@ -431,12 +447,16 @@ def run_acceptance(profile: dict[str, Any], source: Path, revision: str, *,
             output = (result.stdout + result.stderr).strip()
             status = "VERIFIZIERT" if result.returncode == 0 else "BLOCKIERT"
             observed = f"exit={result.returncode}; {output[-4000:]}"
+            receipt.update(state="completed", exit_code=result.returncode)
         except (OSError, subprocess.TimeoutExpired) as exc:
             status = "BLOCKIERT"
+            receipt["state"] = "timeout" if isinstance(exc, subprocess.TimeoutExpired) else "launch_error"
             observed = f"{type(exc).__name__}: {exc}"
         evidence.append(make_evidence(kind, display, revision,
                                       f"{sys.platform}; Python {sys.version.split()[0]}",
                                       observed, status))
+        receipt["clean_revision"] = clean_before and clean_revision()
+        evidence[-1]["execution"] = receipt
     if not commands:
         evidence.append(make_evidence(kind, "project.json", revision,
                                       f"{sys.platform}; Python {sys.version.split()[0]}",
@@ -750,7 +770,7 @@ def run_committed_build(profile: dict[str, Any], source: Path, revision: str) ->
             path.write_bytes(payload)
             if os.name != "nt":
                 path.chmod(mode)
-        checks = run_acceptance(profile, root, revision, kind="build")
+        checks = run_acceptance(profile, root, revision, kind="build", source_kind="committed_copy")
     for item in checks:
         item["environment"] += "; isolated committed source"
     return checks
@@ -802,7 +822,7 @@ def freeze_start_checks(archive: Path, profile: dict[str, Any], revision: str) -
                 destination = Path(bundle.extract(entry, source))
                 if os.name != "nt" and (mode := (entry.external_attr >> 16) & 0o777):
                     destination.chmod(mode)
-        evidence = run_acceptance(profile, source, revision, kind="start")
+        evidence = run_acceptance(profile, source, revision, kind="start", source_kind="frozen_bundle")
     for item in evidence:
         item["environment"] += "; extracted freeze"
     return evidence
