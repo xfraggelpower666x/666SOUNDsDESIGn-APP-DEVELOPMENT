@@ -18,6 +18,7 @@ HELP = """666DEV commands (parsed only from this direct invocation):
   666DEV STATUS
   666DEV <PROJECT-ID> SYSTEMSTART|STATUS|WEITER|CODEFORGE|SUPERCODEFORGE|VISUAL|UPDATE|FREEZE
   666DEV <PROJECT-ID> CONTEXT|BUILD
+  666DEV <PROJECT-ID> IMPACT [BASE]
   666DEV <PROJECT-ID> MANIFEST [manifest.json|cards.zip]
   666DEV <PROJECT-ID> PATCH-APPLY <candidate.json>
 
@@ -299,10 +300,18 @@ def execute(tokens: list[str]) -> str:
         raise DevhubError("Project selection is required.")
     project_id, action = normalized[1].lower(), normalized[2]
     project_profile(project_id)
-    if action not in {"PATCH-APPLY", "MANIFEST"} and len(normalized) != 3:
+    if action not in {"PATCH-APPLY", "MANIFEST", "IMPACT"} and len(normalized) != 3:
         raise DevhubError(f"{action} takes only a project ID.")
     if action == "STATUS":
         return render_status(project_id)
+    if action == "IMPACT":
+        from .impact import project_impact
+
+        if len(normalized) > 4:
+            raise DevhubError("IMPACT accepts only one optional Git base.")
+        state = rehydrate(project_id, initialize_demo=False)
+        base = normalized[3] if len(normalized) == 4 else None
+        return json.dumps(project_impact(state, base=base), indent=2)
     if action == "MANIFEST":
         from .manifests import inspect_manifest
 

@@ -4,11 +4,12 @@ import argparse
 import json
 from pathlib import PureWindowsPath
 
-from .providers import git_bytes
-
 from .core import (
-    ROOT, STATUSES, DevhubError, ID_RE, git, load_current, project_entries, project_profile,
+    ROOT, STATUSES, DevhubError, ID_RE, git, load_current, project_entries, project_profile, rehydrate,
 )
+
+from .impact import project_impact
+from .providers import git_bytes
 
 
 def verify(base: str | None = None) -> dict:
@@ -16,6 +17,7 @@ def verify(base: str | None = None) -> dict:
     checked = 0
     changed_files: list[str] = []
     resolved_base = None
+    impacts = []
     try:
         entries = project_entries()
         for project_id, profile_ref in entries.items():
@@ -82,12 +84,20 @@ def verify(base: str | None = None) -> dict:
                         errors.append(f"Scope diff includes ignored work area: {name}")
             except DevhubError as exc:
                 errors.append(f"Diff base or scope could not be verified: {exc}")
+        for project_id in entries:
+            try:
+                state = rehydrate(project_id, initialize_demo=False)
+                project_base = resolved_base if state["profile"]["source_mode"] == "monorepo" else None
+                impacts.append(project_impact(state, base=project_base))
+            except DevhubError as exc:
+                impacts.append({"project_id": project_id, "error": str(exc), "checks": []})
         return {
             "status": ("BLOCKIERT" if errors else "VERIFIZIERT" if base else "PARTIAL"),
             "diff_base": resolved_base or base or "UNSPECIFIED (working tree only)",
             "projects_checked": checked,
             "required_sources": {"registry": "VERIFIZIERT", "diff_base": "VERIFIZIERT" if resolved_base else "PARTIAL"},
             "changed_files": changed_files,
+            "project_impacts": impacts,
             "errors": errors,
             "skipped": [] if base else ["Commit-to-HEAD diff comparison: no base supplied"],
         }

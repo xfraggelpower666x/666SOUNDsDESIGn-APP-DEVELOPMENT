@@ -131,6 +131,15 @@ def project_profile(project_id: str) -> tuple[dict[str, Any], Path]:
             for value in values
         ):
             raise DevhubError(f"Invalid {key} path list in profile {project_id}.")
+    declarations = profile.get("test_dependencies", {})
+    if not isinstance(declarations, dict) or any(
+        test not in profile["test_paths"] or not isinstance(paths, list) or not paths
+        or any(not isinstance(path, str) or path in {"", "."} or "\\" in path
+               or PureWindowsPath(path).drive or PurePosixPath(path).is_absolute()
+               or ".." in PurePosixPath(path).parts for path in paths)
+        for test, paths in declarations.items()
+    ):
+        raise DevhubError(f"Invalid test_dependencies in profile {project_id}.")
     if not isinstance(profile.get("expected_ref"), str) or not profile["expected_ref"]:
         raise DevhubError(f"Profile {project_id} requires expected_ref.")
     for key in ("build_commands", "test_commands", "start_commands"):
@@ -495,7 +504,9 @@ def python_graph(source: Path, profile: dict[str, Any], revision: str) -> dict[s
     diagnostics: list[str] = []
     py_files = sorted(source.rglob("*.py"))
     for path in py_files:
-        if any(part in {".git", ".work", "__pycache__"} for part in path.parts):
+        if path.is_symlink() or not path.resolve().is_relative_to(source.resolve()) or any(
+            part in {".git", ".work", "__pycache__"} for part in path.relative_to(source).parts
+        ):
             continue
         rel = path.relative_to(source).as_posix()
         nodes.append({"id": rel, "kind": "module", "source": rel, "revision": revision})
@@ -568,6 +579,8 @@ def python_graph(source: Path, profile: dict[str, Any], revision: str) -> dict[s
                 except (tomllib.TOMLDecodeError, UnicodeDecodeError):
                     diagnostics.append(f"Unable to parse build contract {build_file}.")
         for test_path in profile.get("test_paths", []):
+            if test_path in profile.get("test_dependencies", {}):
+                continue
             nodes.append({"id": test_path, "kind": "test", "source": "project.json",
                           "revision": revision})
             edges.append({"from": entry, "to": test_path, "direction": "validated_by",
@@ -575,6 +588,13 @@ def python_graph(source: Path, profile: dict[str, Any], revision: str) -> dict[s
             for build_file in profile.get("build_contracts", []):
                 edges.append({"from": build_file, "to": test_path, "direction": "checked_by",
                               "revision": revision, "evidence": "ABGELEITET", "source": "project.json"})
+    build_contracts = set(profile.get("build_contracts", []))
+    for test_path, dependencies in profile.get("test_dependencies", {}).items():
+        nodes.append({"id": test_path, "kind": "test", "source": "project.json", "revision": revision})
+        for dependency in dependencies:
+            edges.append({"from": dependency, "to": test_path,
+                          "direction": "checked_by" if dependency in build_contracts else "validated_by",
+                          "revision": revision, "evidence": "ABGELEITET", "source": "project.json"})
     return {"revision": revision, "nodes": nodes, "edges": edges, "diagnostics": diagnostics,
             "dynamic_bindings": {"status": "OFFEN", "reason": "Dynamic Python imports are not statically resolved."}}
 
@@ -789,6 +809,8 @@ def freeze_start_checks(archive: Path, profile: dict[str, Any], revision: str) -
 
 
 def dashboard_data() -> dict[str, Any]:
+    from .impact import project_impact
+
     projects = []
     for project_id in sorted(project_entries()):
         try:
@@ -800,9 +822,15 @@ def dashboard_data() -> dict[str, Any]:
             if state["current"] and state["working_pointer"]:
                 current_evidence.extend(record for record in state["current"]["checkpoint"]["results"]
                                         if record.get("evidence_type") == "current-acceptance")
+            graph = python_graph(state["source"], profile, item["commit"])
+            try:
+                impact = project_impact(state, graph=graph)
+            except DevhubError as exc:
+                impact = {"error": str(exc)}
             projects.append({
                 **item,
-                "graph": python_graph(state["source"], profile, item["commit"]),
+                "graph": graph,
+                "impact": impact,
                 "evidence": [record for record in current_evidence if record.get("commit") == item["commit"]],
                 "history": sorted(path.name for path in
                                   state_file(state["project_dir"], "checkpoints").glob("*.json")),

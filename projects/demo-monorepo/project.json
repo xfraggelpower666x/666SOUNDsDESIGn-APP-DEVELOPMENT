@@ -12,7 +12,11 @@
   "console_entrypoints": {"demo-app": "demo_app.main:main"},
   "language_files": ["pyproject.toml"],
   "build_contracts": ["pyproject.toml"],
-  "test_paths": ["tests/test_demo_app.py"],
+  "test_paths": ["tests/test_demo_app.py", "tests/test_package_identity.py"],
+  "test_dependencies": {
+    "tests/test_demo_app.py": ["src/demo_app/main.py", "src/demo_app/__init__.py", "pyproject.toml"],
+    "tests/test_package_identity.py": ["src/demo_app/__init__.py"]
+  },
   "writable_paths": ["src/demo_app", "pyproject.toml"],
   "build_commands": [["python", "-m", "py_compile", "src/demo_app/main.py"]],
   "start_commands": [["python", "src/demo_app/main.py"]],

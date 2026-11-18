@@ -26,6 +26,26 @@ function renderEvidence(target, records) {
   }
 }
 
+function renderImpact(report) {
+  const target = find("#impact");
+  target.replaceChildren();
+  if (!report || report.error) {
+    target.append(text("p", report?.error || "Keine Änderungsanalyse verfügbar."));
+    return;
+  }
+  target.append(text("p", `Git-Basis ${report.base.slice(0, 12)} · HEAD ${report.head.slice(0, 12)}`));
+  if (!report.checks.length) target.append(text("p", "Keine Prüffälle im Projektprofil deklariert."));
+  for (const check of report.checks) {
+    const row = text("div", "");
+    row.className = "evidence";
+    const status = check.disposition === "RECHECK" ? "Erneut prüfen" : "Unbetroffen laut Projektprofil";
+    row.append(text("b", `${status} · ${check.path}`));
+    for (const chain of check.chains) row.append(text("div", chain.join(" → ")));
+    if (!check.chains.length) row.append(text("div", check.reasons.join("; ")));
+    target.append(row);
+  }
+}
+
 function showView() {
   for (const tab of tabs) tab.setAttribute("aria-pressed", String(tab.dataset.view === view));
   for (const panel of panels) panel.hidden = panel.dataset.panel !== view;
@@ -62,6 +82,7 @@ function render() {
   copy.disabled = !project;
   copy.textContent = "CLI-Befehl kopieren";
   showView();
+  renderImpact(project?.impact);
 
   const filter = find("#status-filter").value;
   renderEvidence(find("#evidence"), records.filter(record => filter === "ALL" || record.status === filter));

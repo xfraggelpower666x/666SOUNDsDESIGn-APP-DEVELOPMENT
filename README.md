@@ -96,6 +96,23 @@ evidence, graph, history, and provider status while the server runs. Use
 are `OFFEN`. Local tests are not presented as remote, Windows, device, or production
 acceptance. The verifier reports its actual diff base; without one it returns `PARTIAL`.
 
+## Änderungsfolgen
+
+`python -m devhub.cli 666DEV <projekt-id> IMPACT [git-basis]` verbindet den Git-Diff
+mit dem vorhandenen Projektgraphen. Ohne explizite Basis verwendet der Befehl
+einen abweichenden Arbeitscheckpoint oder Current. Wenn beide auf HEAD liegen
+oder noch fehlen, werden lokale Änderungen gegen HEAD geprüft. Die Dashboard-Ansicht
+**Abnahme** zeigt denselben Bericht. Der Verifier führt ihn unter `project_impacts`
+und verwendet für Monorepo-Projekte seine explizite Diff-Basis, wenn angegeben.
+
+`RECHECK` zeigt die Änderungs- und Abhängigkeitskette oder den Grund für eine
+vorsorgliche Nachprüfung. Mit `test_dependencies` kann ein Projektprofil die
+vollständigen projektrelativen Eingaben eines deklarierten Tests dokumentieren.
+`UNIMPACTED` beschreibt die Beziehung zum geprüften Diff. Frühere Testergebnisse
+behalten ihre ursprüngliche Revision. Die regulären Testbefehle und die frische
+Abnahme in `UPDATE` laufen vollständig weiter. Änderungen an der Dateistruktur,
+fehlende Graphzuordnungen und unklare Profile führen zur vorsorglichen Nachprüfung.
+
 ## Scope and recovery
 
 Registry membership selects the project; the profile owns the development contract.
