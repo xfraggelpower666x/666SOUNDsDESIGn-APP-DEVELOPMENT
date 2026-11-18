@@ -1,0 +1,46 @@
+name: 666DEV Windows Portable
+
+on:
+  push:
+    paths:
+      - ".github/workflows/windows-portable.yml"
+      - "windows-app/**"
+      - "src/devhub/**"
+      - "web/**"
+      - "registry/**"
+      - "projects/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-portable:
+    runs-on: windows-2025
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.11"
+          cache: false
+      - name: Build Windows x64 ZIP
+        shell: pwsh
+        run: |
+          python windows-app/build_portable.py --output "release/666DEV-Windows-x64.zip"
+      - name: Check extracted portable app on Windows
+        shell: pwsh
+        run: |
+          python windows-app/portable/smoke.py "release/666DEV-Windows-x64.zip" "$env:GITHUB_SHA"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: 666DEV-Windows-x64
+          path: release/666DEV-Windows-x64.zip
+          if-no-files-found: error
+          compression-level: 0

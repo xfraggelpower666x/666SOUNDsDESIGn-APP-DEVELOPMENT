@@ -1,5 +1,29 @@
 # 666DEV Windows Control
 
+## Portable Windows-x64-Ausgabe
+
+`666DEV-Windows-x64.zip` vollständig entpacken und **666DEV.exe** starten.
+Das Paket enthält den Git-Checkout, Python, MinGit und die GitHub CLI. Für
+die lokale Nutzung werden keine vorhandenen Python- oder Git-Installationen
+benötigt. Für GitHub-Schreibaktionen bleibt eine eigene CLI-Anmeldung erforderlich.
+Die Anwendung verwendet die gewohnte lokale Oberfläche im Edge-App-Modus.
+
+In PowerShell prüft `.\666DEV.exe --check` den portablen Startpfad und die Revision.
+Lokale Daten liegen im entpackten Ordner unter `checkout/.work/`. Beim Wechsel
+zu einem neuen Paket kann dieser Ordner nach beendetem Programm übernommen werden.
+
+Aus einem Git-Checkout mit Python ab 3.11, Git und einer Go-Toolchain erstellen:
+
+```powershell
+python windows-app/build_portable.py --output .work/666DEV-Windows-x64.zip
+```
+
+Der Build verpackt den Commit am Git HEAD. Die Runtime-Archive werden mit festen
+SHA-256-Werten geprüft. Die GitHub-Workflow-Ausgabe enthält den auf Windows
+geprüften ZIP-Build, sobald der Workflow erfolgreich abgeschlossen ist.
+
+## Entwicklungsstart im Checkout
+
 Doppelklick auf [START_666DEV_WINDOWS.cmd](START_666DEV_WINDOWS.cmd) im lokalen 666DEV-Git-Checkout. Benötigt werden Git for Windows im PATH und Python ab 3.11. Das Fenster öffnet sich im Edge-App-Modus, sofern Edge verfügbar ist, sonst im Standardbrowser. Die Startkonsole offen lassen. Strg+C beendet den lokalen Server. Es sind keine zusätzlichen Python-Pakete, API-Abos oder Hosting-Dienste erforderlich.
 
 | Ansicht | Funktion |
