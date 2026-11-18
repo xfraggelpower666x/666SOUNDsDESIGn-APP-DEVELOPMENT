@@ -60,7 +60,10 @@ def snapshot(project_id: str, *, desktop_base: str | None = None) -> dict:
     record["acceptance"] = summarize_acceptance(profile, view["commit"], results,
                                                 clean=record["working_tree_clean"])
     if not record["working_tree_clean"]:
-        record["status"] = "PARTIAL"
+        conflicts = core.unresolved_conflicts(state["source"])
+        record["status"] = "CONFLICT_QUARANTINE" if conflicts else "PARTIAL"
+        if conflicts:
+            record["git_conflicts"] = conflicts
     else:
         record["next_action"] = view["next_action"]
     return record
@@ -166,7 +169,9 @@ def diagnose(project_id: str | None = None, handoff: dict | None = None) -> dict
     if observed["status"] in {"READBACK_PENDING", "OFFEN"}:
         return {**result, "status": "READBACK_PENDING", "reason": "Projektzustand nicht vollständig belegt."}
     if observed["status"] == "CONFLICT_QUARANTINE":
-        return {**result, "status": "OBSERVED_DRIFT", "reason": "Nativer Pointer- oder Checkpoint-Konflikt."}
+        reason = ("Ungelöste Konflikte im Git-Index des Projekts."
+                  if observed.get("git_conflicts") else "Nativer Pointer- oder Checkpoint-Konflikt.")
+        return {**result, "status": "OBSERVED_DRIFT", "reason": reason}
     if handoff is not None:
         comparison = resume(project_id, handoff, observed=observed)
         result["recovery"] = comparison["recovery"]

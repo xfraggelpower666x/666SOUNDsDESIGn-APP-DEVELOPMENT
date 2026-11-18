@@ -10,7 +10,7 @@ from pathlib import Path
 from .core import (
     ROOT, DevhubError, allowed_path, apply_candidate, checkpoint, clean_source, dashboard_data, export_context, freeze_project, freeze_start_checks, inspect_project,
     git, make_evidence, project_entries, project_profile, python_graph, rehydrate,
-    plan_entrypoint_repairs, run_acceptance, run_committed_build, state_file,
+    plan_entrypoint_repairs, run_acceptance, run_committed_build, state_file, unresolved_conflicts,
 )
 
 HELP = """666DEV commands (parsed only from this direct invocation):
@@ -38,6 +38,8 @@ def _checkpoint_action(project_id: str, action: str) -> dict:
     state = rehydrate(project_id)
     profile, project_dir = state["profile"], state["project_dir"]
     commit = state["revision"]["commit"]
+    if action in {"WEITER", "UPDATE"} and unresolved_conflicts(state["source"]):
+        raise DevhubError("CONFLICT_QUARANTINE: resolve the project Git index conflicts before continuing.")
     previous = state["working"]["checkpoint"] if state["working"] else None
     stale = previous is not None and previous["observed_head"] != commit
     evidence = [item for item in previous["results"] if item.get("commit") == commit] if previous else []
@@ -263,6 +265,8 @@ def serve_dashboard() -> None:
 
 def _patch_apply(project_id: str, candidate_arg: str) -> str:
     state = rehydrate(project_id)
+    if unresolved_conflicts(state["source"]):
+        raise DevhubError("CONFLICT_QUARANTINE: resolve the project Git index conflicts before applying a patch.")
     candidate_path = (state["project_dir"] / candidate_arg).resolve()
     if not candidate_path.is_relative_to(state_file(state["project_dir"], "patch-candidates")):
         raise DevhubError("WRITE_BLOCKED: candidate path escapes the selected project.")

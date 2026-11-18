@@ -52,6 +52,10 @@ def validate_companion(config: object) -> None:
         revision = require_text(config["source_revision"], "companion.source_revision")
         if len(revision) > 200 or revision != config["source_revision"]:
             raise ValueError("companion.source_revision: genaue Revisionskennung erforderlich")
+    if "start_format" in config and (
+        not isinstance(config["start_format"], str) or not ID_RE.fullmatch(config["start_format"])
+    ):
+        raise ValueError("companion.start_format: ungültige Form-ID")
     for name, allowed in (("status", STATUSES), ("start_mode", MODES)):
         if name in config and (not isinstance(config[name], str) or config[name] not in allowed):
             raise ValueError("companion." + name + ": unbekannt")
@@ -209,6 +213,9 @@ def apply_checkpoint(data: dict, checkpoint: object) -> dict:
     defaults = {"start_mode": mode}
     if view_id is not None:
         defaults["start_view"] = view_id
+    format_id = checkpoint.get("format_id")
+    if mode == "formats" and isinstance(format_id, str) and ID_RE.fullmatch(format_id):
+        defaults["start_format"] = format_id
     return {**data, "companion": {**defaults, **companion}}
 
 

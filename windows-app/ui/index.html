@@ -52,6 +52,12 @@
       <iframe title="666DEV Projekt-Dashboard" id="dashboard-frame"></iframe>
     </section>
     <section data-panel="visualforms" class="pane dashboard" hidden>
+      <label for="visual-handoff">UI-Handoff öffnen</label>
+      <input id="visual-handoff" type="file" accept=".json,application/json">
+      <label for="visual-handoff-text">Oder kopierten UI-Handoff einfügen</label>
+      <textarea id="visual-handoff-text" rows="2" maxlength="2048"></textarea>
+      <button id="visual-handoff-open" type="button">Ansicht wiederaufnehmen</button>
+      <p id="visual-handoff-status" role="status"></p>
       <iframe title="666DEV Visualformen" id="visualforms-frame" sandbox="allow-scripts allow-forms"></iframe>
     </section>
     <section data-panel="livecircle" class="pane" hidden>
@@ -116,6 +122,8 @@
         <label for="token">Lesetoken für private Repositories (optional)</label>
         <input id="token" type="password" autocomplete="off" spellcheck="false">
         <button type="submit">Gespeicherten Ref lesen</button>
+        <label for="github-expected">Erwarteter Commit für Branch-Readback (optional)</label>
+        <input id="github-expected" maxlength="64" spellcheck="false" autocomplete="off">
         <p id="github-result">Ein Token wird nur für diesen Abruf verwendet.</p>
       </form>
     </section>

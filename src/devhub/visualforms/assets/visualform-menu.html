@@ -334,7 +334,7 @@
         ].join('\n');
         dom.command.value = compiled;
         dom.feedback.textContent = '';
-        root.dispatchEvent(new CustomEvent('scevi:format', { bubbles:true, detail:{ form:form.label, missing } }));
+        root.dispatchEvent(new CustomEvent('scevi:format', { bubbles:true, detail:{ id:formId, form:form.label, missing } }));
       }
 
       async function copy(command) {
@@ -354,6 +354,16 @@
       dom.copy.addEventListener('click', () => copy(compiled));
       dom.template.addEventListener('click', () => copy(prompts[formId]));
       root.addEventListener('scevi:format-refresh', refresh);
+      root.addEventListener('scevi:restore-format', (event) => {
+        const id = event.detail.id;
+        const index = goals.findIndex((goal) => goal.forms.includes(id));
+        if (index === -1) return;
+        goalIndex = index;
+        formId = id;
+        lastFormat.set(index, id);
+        drawGoals();
+        drawForm();
+      });
       root.addEventListener('scevi:format-focus', () => {
         dom.summary.parentElement.open = true;
         const inputs = [...dom.fields.querySelectorAll('input')];

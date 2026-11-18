@@ -226,3 +226,31 @@ bereitgestellten Coding-Template 0.85.1. SHA-256 des Eingabearchivs
 Fünf Renderer-Assets und die Renderfunktion liegen lokal in
 `src/devhub/visualforms/`. Die Ansicht benötigt weder einen entfernten
 Dienst noch die Installation des Quellplugins.
+
+## Git-Konflikte, Branch-Readback und visuelle Wiederaufnahme
+
+Der LiveCircle prüft bei lokalem Diff die unaufgelösten Indexeinträge im
+Projektpfad. Ein belegter Git-Konflikt erscheint als
+`CONFLICT_QUARANTINE`. `WEITER`, `UPDATE` und `PATCH-APPLY` warten auf
+die Auflösung. Normale lokale Änderungen bleiben `PARTIAL`. Ein
+Konflikt außerhalb des ausgewählten Projektpfads wird dem Projekt
+nicht zugerechnet. Der LiveCircle löst Konflikte und Commits nicht selbst auf.
+
+Windows Control kann unter **Einstellungen** einen erwarteten
+vollständigen Commit mit der exakten GitHub-Branchreferenz vergleichen.
+Der 666DEV-Adapter verwendet dieselbe vorhandene GitHub-Lesesitzung.
+Bei Abweichung zeigt er den gelesenen Commit und `PARTIAL`.
+
+**Visualformen** nimmt einen kopierten oder als JSON-Datei geöffneten
+UI-Handoff an. Der Renderer übernimmt Modus, Projektansicht und
+gegebenenfalls `format_id` ausschließlich bei passender Projektkennung
+und Quellrevision. Eine blockierte Projektbasis verhindert die
+Wiederaufnahme. Bei einer veralteten Übergabe bleibt die Standardansicht
+mit sichtbarem Hinweis bedienbar. Der isolierte Renderer führt weder
+Git-Befehle noch Projektaktionen aus.
+
+Quellen der gezielten Übernahme aus Coding Profi 0.87.0: Indexprüfung
+aus `checkpoint_review.py`, exakter Remote-Abgleich aus
+`Git-Workflow.ps1` und die drei Änderungen für `format_id` im
+Visualformen-Renderer. Die native 666DEV-Registry und der native
+Checkpoint-Vertrag bestimmen weiterhin das Ziel.

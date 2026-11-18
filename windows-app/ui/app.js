@@ -53,10 +53,35 @@ async function action(name, confirmed = false, project = get("project").value) {
   }
 }
 
-function openVisualforms() {
-  const project = encodeURIComponent(get("project").value);
-  get("visualforms-frame").src = "/visualforms/?project=" + project;
+function openVisualforms(handoff) {
+  const query = new URLSearchParams({project: get("project").value});
+  if (handoff) query.set("handoff", JSON.stringify(handoff));
+  get("visualforms-frame").src = "/visualforms/?" + query;
+  get("visual-handoff-status").textContent = "";
 }
+
+function restoreVisualforms(text) {
+  try {
+    const input = JSON.parse(text);
+    if (input?.schema !== "scevi.visual.handoff.1") throw new Error("Unbekanntes UI-Handoff-Format.");
+    const {schema, project_key, source_revision, mode, view_id, format_id} = input;
+    openVisualforms({schema, project_key, source_revision, mode, view_id, format_id});
+  } catch (error) {
+    get("visual-handoff-status").textContent = error.message;
+  }
+}
+get("visual-handoff-open").addEventListener("click", () => restoreVisualforms(get("visual-handoff-text").value));
+get("visual-handoff").addEventListener("change", async event => {
+  const [file] = event.target.files;
+  event.target.value = "";
+  if (!file) return;
+  try {
+    if (file.size > 2048) throw new Error("UI-Handoff überschreitet 2 KB.");
+    restoreVisualforms(await file.text());
+  } catch (error) {
+    get("visual-handoff-status").textContent = error.message;
+  }
+});
 
 for (const button of document.querySelectorAll("[data-view]")) {
   button.addEventListener("click", () => {
@@ -103,9 +128,9 @@ get("github-form").addEventListener("submit", async event => {
   get("token").value = "";
   get("github-state").textContent = "Prüft …";
   try {
-    const result = await request("/api/github", {token});
+    const result = await request("/api/github", {token, expected_commit: get("github-expected").value.trim()});
     get("github-state").textContent = result.status;
-    get("github-result").textContent = result.commit ? `${result.repository} · ${result.ref} · ${result.commit}` : result.detail;
+    get("github-result").textContent = result.commit ? `${result.repository} · ${result.ref} · ${result.commit} · ${result.detail}` : result.detail;
   } catch (error) {
     get("github-state").textContent = "Offen";
     get("github-result").textContent = error.message;
@@ -169,6 +194,9 @@ async function refreshCircle({handoff, download = false} = {}) {
           : "",
         command ? `Nächster Vorschlag: ${command.join(" ")}` : "",
       ].filter(Boolean).join(" ");
+    }
+    if (native.git_conflicts) {
+      recoveryPanel.textContent = `CONFLICT_QUARANTINE · ${native.git_conflicts} ungelöste Git-Konflikte im Projekt.`;
     }
     const impact = native.desktop_impact;
     const desktopMessages = {

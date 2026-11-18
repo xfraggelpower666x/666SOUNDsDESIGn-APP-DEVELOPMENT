@@ -19,7 +19,7 @@
   let selectedAction = null;
   let projectView = data.views.find(view => view.id === settings.start_view) || data.views[0];
   let chart = { state:'OFFEN', reason:'Messwerte, Einheiten und Quelle prüfen' };
-  let formats = { form:'Handwritten', missing:null };
+  let formats = { id:null, form:'Handwritten', missing:null };
   let preference = null;
   let mode;
 
@@ -34,7 +34,7 @@
     }
     if (raw === null) return null;
     try {
-      const value = raw.length <= 100 ? decode(JSON.parse(raw)) : null;
+      const value = raw.length <= 160 ? decode(JSON.parse(raw)) : null;
       if (value) return value;
     } catch {
       // Beschädigte Darstellungspräferenz kontrolliert entfernen.
@@ -155,6 +155,7 @@
 
   field('remember').addEventListener('click', () => {
     preference = { schema:1, mode, view_id:projectView.id };
+    if (mode === 'formats' && formats.id) preference.format_id = formats.id;
     try {
       if (!key) throw new Error('Kein Projekt gebunden');
       const record = JSON.stringify(preference);
@@ -239,6 +240,7 @@
 
   field('handoff').addEventListener('click', () => {
     const handoff = { schema:'scevi.visual.handoff.1', project_key:settings.project_key, source_revision:settings.source_revision, mode, view_id:projectView.id };
+    if (mode === 'formats' && formats.id) handoff.format_id = formats.id;
     return copy(JSON.stringify(handoff, null, 2), 'UI-Handoff kopiert.');
   });
 
@@ -249,7 +251,7 @@
   preference = readPreference(key, record => record?.schema === 1 && knownModes.has(record.mode) ? record : null);
   preferredAction = readPreference(actionKey, record => record?.schema === 1 && actions.has(record.id) ? record.id : null);
   if (preference?.view_id !== undefined && !data.views.some(view => view.id === preference.view_id)) {
-    preference = { schema:1, mode:preference.mode };
+    delete preference.view_id;
     try {
       const recovered = JSON.stringify(preference);
       localStorage.setItem(key, recovered);
@@ -265,6 +267,14 @@
     );
   }
   show(settings.start_mode || preference?.mode || 'project');
-  shell.querySelector('#lyvra-intelligent-ui').dispatchEvent(new Event('scevi:format-refresh'));
+  const formatMenu = shell.querySelector('#lyvra-intelligent-ui');
+  formatMenu.dispatchEvent(new Event('scevi:format-refresh'));
+  const startFormat = settings.start_format || (!settings.start_mode && preference?.format_id);
+  if (mode === 'formats' && startFormat) {
+    formatMenu.dispatchEvent(new CustomEvent('scevi:restore-format', { detail:{ id:startFormat } }));
+    if (formats.id !== startFormat) {
+      feedback.textContent = 'Gespeicherte Visualform fehlt. Wähle eine verfügbare Form.';
+    }
+  }
   if (data.chart) shell.querySelector('#sceeri-chart-workbench').dispatchEvent(new CustomEvent('scevi:chart-seed', { detail:data.chart }));
 })();

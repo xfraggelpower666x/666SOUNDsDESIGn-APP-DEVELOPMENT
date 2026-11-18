@@ -57,7 +57,7 @@ def build(source: Path, destination: Path):
         longDescription="666DEV-Projektkontinuität und Coding-Profi-Fachskills für Analyse, Entwicklung, Repair, Test und Übergabe.",
         defaultPrompt=["666DEV HELP", "Zeige mir den 666DEV-LiveCircle für mein registriertes Projekt."],
     )
-    manifest.update(name="666dev-coding-control", version="0.1.4", description=display["longDescription"])
+    manifest.update(name="666dev-coding-control", version="0.1.5", description=display["longDescription"])
     files["plugin.json"] = dump(manifest)
     overlay = json.loads(files[".codex-plugin/plugin.json"])
     overlay.update(name=manifest["name"], version=manifest["version"],

@@ -400,6 +400,14 @@ def checkpoint(profile: dict[str, Any], project_dir: Path, revision: str, task: 
         return payload
 
 
+def unresolved_conflicts(source: Path) -> int:
+    """Count unresolved index paths inside the selected project."""
+    from .providers import git_bytes
+
+    records = git_bytes(source, "--no-optional-locks", "ls-files", "--unmerged", "-z", "--", ".")
+    return len({record.split(b"\t", 1)[1] for record in records.split(b"\0") if record})
+
+
 def clean_source(source: Path) -> bool:
     return not git(source, "--no-optional-locks", "status", "--porcelain",
                    "--untracked-files=all", "--", ".")

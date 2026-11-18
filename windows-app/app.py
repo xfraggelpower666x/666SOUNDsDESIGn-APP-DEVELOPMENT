@@ -82,15 +82,22 @@ def github_probe(data):
     token = data.get("token", "")
     if not isinstance(token, str) or len(token) > 512 or any(not 33 <= ord(char) <= 126 for char in token):
         raise ValueError("Ungültiges Tokenformat.")
+    expected = data.get("expected_commit", "")
+    if not isinstance(expected, str) or (expected and not re.fullmatch(r"[0-9a-fA-F]{40}|[0-9a-fA-F]{64}", expected)):
+        raise ValueError("Erwarteten vollständigen Commit angeben.")
     owner, name = (quote(part, safe="") for part in repo["repository"].split("/"))
-    ref = quote(repo["ref"], safe="")
+    branch = repo["ref"].removeprefix("refs/heads/")
+    if expected and (branch == "HEAD" or branch.startswith("refs/")):
+        raise ValueError("Für Readback einen GitHub-Branch einstellen.")
+    endpoint = (f"git/ref/heads/{quote(branch, safe='/')}" if expected
+                else f"commits/{quote(repo['ref'], safe='')}")
     headers = {"Accept": "application/vnd.github+json", "User-Agent": "666DEV-Windows",
                "X-GitHub-Api-Version": "2022-11-28"}
     if token:
         headers["Authorization"] = f"Bearer {token}"
     client = build_opener(NoRedirect())
     try:
-        with client.open(Request(f"https://api.github.com/repos/{owner}/{name}/commits/{ref}",
+        with client.open(Request(f"https://api.github.com/repos/{owner}/{name}/{endpoint}",
                                  headers=headers), timeout=12) as response:
             commit = json.load(response)
     except HTTPError as exc:
@@ -99,11 +106,22 @@ def github_probe(data):
         return {"status": "OFFEN", "detail": "GitHub API ist gerade nicht erreichbar."}
     except ValueError:
         commit = None
+    if expected and isinstance(commit, dict):
+        obj = commit.get("object")
+        if commit.get("ref") != f"refs/heads/{branch}" or not isinstance(obj, dict) or obj.get("type") != "commit":
+            return {"status": "READBACK_PENDING", "detail": "Der erwartete Branch wurde nicht zurückgelesen."}
+        commit = obj
     sha = commit.get("sha") if isinstance(commit, dict) else None
     if not isinstance(sha, str) or not re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64})", sha):
         return {"status": "OFFEN", "detail": "Die GitHub-Antwort enthält keine gültige Commit-ID."}
-    return {"status": "VERIFIZIERT", "repository": repo["repository"], "ref": repo["ref"],
-            "commit": sha, "detail": "Commit über die GitHub-API gelesen."}
+    result = {"status": "VERIFIZIERT", "repository": repo["repository"], "ref": repo["ref"],
+              "commit": sha, "detail": "Commit über die GitHub-API gelesen."}
+    if expected:
+        match = sha == expected.lower()
+        result.update(status="VERIFIZIERT" if match else "PARTIAL", expected_commit=expected.lower(),
+                      detail="Branch stimmt mit dem erwarteten Commit überein." if match else
+                      "Branch zeigt aktuell auf einen anderen Commit.")
+    return result
 
 
 def repo_mind_action(data):
@@ -171,12 +189,27 @@ class Handler(BaseHTTPRequestHandler):
                 path, media = ASSETS[route]
                 self.respond(200, path.read_bytes(), media)
             elif route == "/visualforms/":
-                project, *duplicates = parse_qs(url.query, keep_blank_values=True).get("project", [""])
+                query = parse_qs(url.query, keep_blank_values=True)
+                project, *duplicates = query.get("project", [""])
                 if duplicates or (project and project not in project_entries()):
                     self.json(400, {"error": "Unbekanntes Projekt."})
                     return
                 nonce = secrets.token_urlsafe(24)
-                html = render_workspace(snapshot(project) if project else None)
+                handoff = query.get("handoff", [])
+                checkpoint = None
+                if handoff:
+                    if len(handoff) != 1 or len(handoff[0]) > 2048:
+                        self.json(400, {"error": "Ungültiger UI-Handoff."})
+                        return
+                    try:
+                        checkpoint = json.loads(handoff[0])
+                    except ValueError:
+                        self.json(400, {"error": "Ungültiger UI-Handoff."})
+                        return
+                    if not isinstance(checkpoint, dict):
+                        self.json(400, {"error": "Ungültiger UI-Handoff."})
+                        return
+                html = render_workspace(snapshot(project) if project else None, checkpoint)
                 html = html.replace("<script>", f'<script nonce="{nonce}">')
                 self.respond(200, html.encode("utf-8"), "text/html", policy=(
                     f"default-src 'none'; script-src 'nonce-{nonce}'; style-src 'unsafe-inline'; "

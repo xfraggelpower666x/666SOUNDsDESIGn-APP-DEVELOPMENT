@@ -128,6 +128,23 @@ class LiveCircleTests(unittest.TestCase):
                                  unknown["recovery"]["project"]["inspection_command"])
                 self.assertIsNone(snapshot(project)["current"])
 
+                original_branch = core.git(root, "branch", "--show-current")
+                core.git(root, "checkout", "-qb", "conflict-side")
+                (app / "dirty.txt").write_text("side", encoding="utf-8")
+                core.git(root, "commit", "-qam", "side")
+                core.git(root, "checkout", "-q", original_branch)
+                (app / "dirty.txt").write_text("main", encoding="utf-8")
+                core.git(root, "commit", "-qam", "main")
+                with self.assertRaises(core.DevhubError):
+                    core.git(root, "merge", "conflict-side")
+                self.assertEqual("CONFLICT_QUARANTINE", snapshot(project)["status"])
+                self.assertEqual(1, snapshot(project)["git_conflicts"])
+                self.assertEqual("CONFLICT_QUARANTINE", resume(project, handoff)["status"])
+                for action in ("WEITER", "UPDATE"):
+                    with self.assertRaisesRegex(core.DevhubError, "CONFLICT_QUARANTINE"):
+                        execute(["666DEV", project, action])
+                core.git(root, "merge", "--abort")
+
                 _, project_dir = core.project_profile(project)
                 core.state_file(project_dir, "working.json").write_text("{}", encoding="utf-8")
                 self.assertEqual("CONFLICT_QUARANTINE", snapshot(project)["status"])

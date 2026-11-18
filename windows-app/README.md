@@ -62,3 +62,13 @@ Der Visual Daemon verwendet denselben Projektstatus. Eingaben, Diagramme
 und Ansichtswechsel werden lokal im iframe verarbeitet. Der iframe hat
 keinen Schreibzugriff auf Projekt oder Chat. Vorlieben gelten in der
 geöffneten Ansicht. Kopieren kann im Browser einen manuellen Schritt erfordern.
+
+**Visualformen → UI-Handoff kopieren** steht unter **Grundlage und
+Gegenprobe**. Füge die JSON in **Oder kopierten UI-Handoff einfügen** ein
+oder öffne die entsprechende Datei. Die ursprüngliche Visualform
+öffnet sich bei passendem Projekt und Commit.
+
+Unter **Einstellungen** kannst du für den eingestellten GitHub-Branch
+einen vollständigen erwarteten Commit eingeben. Ein erfolgreicher
+Abgleich bestätigt den Branch-Stand zum Abrufzeitpunkt. Tests und
+Deployment haben eigene Nachweise.

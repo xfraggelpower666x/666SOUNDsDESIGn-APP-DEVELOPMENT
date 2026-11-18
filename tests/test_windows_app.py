@@ -8,6 +8,7 @@ import unittest
 from http.client import HTTPConnection
 from pathlib import Path
 from unittest.mock import patch
+from urllib.parse import urlencode
 
 APP_PATH = Path(__file__).resolve().parents[1] / "windows-app" / "app.py"
 SPEC = importlib.util.spec_from_file_location("windows_control", APP_PATH)
@@ -82,6 +83,41 @@ class WindowsAppTest(unittest.TestCase):
         status, empty = self.request("/visualforms/")
         self.assertEqual(200, status)
         self.assertIn("Projektquelle offen", empty.decode())
+
+    def test_visual_handoff_binds_the_form_to_the_native_revision(self):
+        project = "demo-monorepo"
+        revision = app.snapshot(project)["source_commit"]
+        handoff = {"schema": "scevi.visual.handoff.1", "project_key": "666dev:" + project,
+                   "source_revision": revision, "mode": "formats", "format_id": "iceberg"}
+        def read(data):
+            query = urlencode({"project": project, "handoff": json.dumps(data)})
+            status, body = self.request("/visualforms/?" + query)
+            self.assertEqual(200, status)
+            return body.decode()
+
+        self.assertIn('"start_format":"iceberg"', read(handoff))
+        stale = read({**handoff, "source_revision": "0" * 40})
+        self.assertNotIn('"start_format":"iceberg"', stale)
+        self.assertIn("stimmt nicht mit der Projektbasis überein", stale)
+        self.assertNotIn('"start_format":"iceberg"', read({**handoff, "project_key": "anderes-projekt"}))
+
+    def test_github_readback_compares_the_exact_branch(self):
+        commit = "a" * 40
+        ref = app.DEFAULTS["ref"]
+        def check(expected, observed_ref):
+            data = {"ref": observed_ref, "object": {"type": "commit", "sha": commit}}
+            with patch.object(app, "build_opener") as opener:
+                client = opener.return_value
+                client.open.return_value = io.BytesIO(json.dumps(data).encode())
+                result = app.github_probe({"expected_commit": expected})
+                self.assertTrue(client.open.call_args.args[0].full_url.endswith(f"/git/ref/heads/{ref}"))
+                return result
+
+        self.assertEqual("VERIFIZIERT", check(commit, "refs/heads/" + ref)["status"])
+        mismatch = check("b" * 40, "refs/heads/" + ref)
+        self.assertEqual("PARTIAL", mismatch["status"])
+        self.assertEqual(commit, mismatch["commit"])
+        self.assertEqual("READBACK_PENDING", check(commit, "refs/tags/" + ref)["status"])
 
     def test_livecircle_shares_native_result(self):
         _, headers = self.session()

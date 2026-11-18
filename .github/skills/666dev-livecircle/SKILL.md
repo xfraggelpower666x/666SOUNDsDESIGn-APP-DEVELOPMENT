@@ -38,6 +38,7 @@ Ein angebotener nativer Folgebefehl begründet keine Ausführung.
 | `REVALIDATE_PROJECT` | Verwende Ursachenanalyse und Repo-Analyse. Folge den betroffenen Pfaden bis zur Prüfung. Bei unvollständiger Zuordnung verwende den breiteren vom Projekt vorgegebenen Prüfumfang. |
 | `DIAGNOSE_ACCEPTANCE` | Lies den nativen Projektstatus und den Laufbeleg. Nutze Fehleranalyse beim tatsächlich ausgeführten Prozess und Toolchain-Diagnose bei einem fehlenden Prozess, bevor du eine Korrektur ableitest. Prüfe beim Timeout zuerst, ob der Prozess überhaupt einen belastbaren Sollwert erreicht hat. |
 | Bestätigter Projektfehler und Reparaturauftrag | Nutze den bestehenden Projektpfad über `CODEFORGE`. Wende einen belegten Patch im beauftragten Umfang über `PATCH-APPLY` an. Verifiziere Korrektur und Regression am betroffenen Einstieg. |
+| Ungelöste Git-Indexkonflikte im Projekt | Melde `CONFLICT_QUARANTINE` mit der nativen Konfliktzahl. Prüfe den Konflikt im gebundenen Checkout. Erst nach geklärtem Index erneut abgleichen. |
 | `CONFLICT_QUARANTINE` oder `READBACK_PENDING` | Benenne den fehlenden oder widersprüchlichen Nachweis. Prüfe zuerst Quelle und Scope. |
 
 ## Arbeitsstränge und Peer-Handoffs
