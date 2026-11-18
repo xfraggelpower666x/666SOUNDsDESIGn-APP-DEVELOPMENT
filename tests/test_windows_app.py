@@ -70,6 +70,26 @@ class WindowsAppTest(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(json.loads(result)["livecircle"], handoff)
 
+    def test_repo_mind_is_local_and_uses_native_review(self):
+        state, headers = self.session()
+        path = "/api/repo-mind"
+        context = {"action": "context", "paths": ["src/devhub/cli.py", "../unavailable.py"]}
+        self.assertEqual(self.request(path, context)[0], 403)
+        status, body = self.request(path, context, **headers)
+        self.assertEqual(200, status)
+        source = json.loads(body)
+        self.assertEqual(state["head"], source["commit"])
+        self.assertEqual("python_ast", source["files"][0]["analysis"])
+        self.assertEqual("unavailable", source["skipped"][0]["reason"])
+        target = "main"
+        status, body = self.request(path, {"action": "review", "target": target}, **headers)
+        self.assertEqual(200, status)
+        self.assertEqual(app.repo_mind.review(app.ROOT, None, target), json.loads(body))
+        status, body = self.request(path, {"action": "publish", "target": target, "base": "HEAD",
+                                           "review_sha256": "0" * 64}, **headers)
+        self.assertEqual(400, status)
+        self.assertIn("erneut", json.loads(body)["error"])
+
     def test_settings_and_token_are_separate(self):
         _, headers = self.session()
         saved = {"repository": "example/dev", "ref": "feature/release", "base": "main"}

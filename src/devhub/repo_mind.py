@@ -1,12 +1,14 @@
 """Repository hygiene from a committed tree, with isolated Markdown-only repairs."""
 from __future__ import annotations
 
+import hashlib
 import json
 import posixpath
 import re
 import subprocess
 import tempfile
 from collections import Counter
+from difflib import unified_diff
 from pathlib import Path, PurePosixPath
 from urllib.parse import quote, unquote, urlsplit
 
@@ -190,8 +192,54 @@ def gh(root: Path, *args: str) -> str:
     return result.stdout.strip()
 
 
-def publish(root: Path, baseline: str, target: str) -> dict:
+def review(root: Path, baseline: str | None, target: str) -> dict:
     report, edits = scan(root, baseline)
+    return review_for_plan(root, report, edits, target)
+
+
+def review_for_plan(root: Path, report: dict, edits: dict[str, str], target: str) -> dict:
+    provider = LocalGitProvider(root)
+    parts = []
+    for path, updated in sorted(edits.items()):
+        original = provider.read_file(report["commit"], path).decode("utf-8")
+        parts.append(format_diff(path, original, updated))
+    payload = {**report, "target_branch": target, "diff": "".join(parts)}
+    checksum = hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False).encode("utf-8"))
+    return {**payload, "review_sha256": checksum.hexdigest()}
+
+
+def git_path(path):
+    if all(33 <= ord(char) <= 126 and char not in '"\\' for char in path):
+        return path
+    escaped = "".join(
+        chr(byte) if 32 <= byte <= 126 and byte not in (34, 92) else f"\\{byte:03o}"
+        for byte in path.encode()
+    )
+    return f'"{escaped}"'
+
+
+def git_lines(content):
+    lines = content.split("\n")
+    return [line + "\n" for line in lines[:-1]] + ([lines[-1]] if lines[-1] else [])
+
+
+def format_diff(path, before, after):
+    source, target = git_path(f"a/{path}"), git_path(f"b/{path}")
+    lines = [f"diff --git {source} {target}\n"]
+    if before is None:
+        lines.append("new file mode 100644\n")
+    generated = unified_diff(
+        git_lines(before or ""), git_lines(after),
+        fromfile="/dev/null" if before is None else source, tofile=target,
+    )
+    lines.extend(line if line.endswith("\n") else line + "\n\\ No newline at end of file\n" for line in generated)
+    return "".join(lines)
+
+def publish(root: Path, baseline: str, target: str, *, expected_review: str | None = None) -> dict:
+    report, edits = scan(root, baseline)
+    draft = expected_review is not None
+    if draft and review_for_plan(root, report, edits, target)["review_sha256"] != expected_review:
+        raise DevhubError("Die Review-Basis oder der Diff hat sich geändert. Prüfe den Stand erneut.")
     if not edits:
         return {**report, "status": "NO_CHANGES"}
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._/-]*", target):
@@ -202,11 +250,13 @@ def publish(root: Path, baseline: str, target: str) -> dict:
         raise DevhubError("Repo Mind darf nur an das bestätigte 666DEV-Repository veröffentlichen.")
     head = report["commit"]
     branch = f"666repo-mind/links-{head[:16]}-{report['rename_base'][:16]}"
+    if draft:
+        branch += "-draft"
     head_ref, target_ref = f"refs/heads/{branch}", f"refs/heads/{target}"
     if target == branch or git(root, "ls-remote", "--refs", "origin", target_ref).split() != [head, target_ref]:
         raise DevhubError("Der GitHub-Zielbranch entspricht nicht dem geprüften Checkout.")
     existing = json.loads(gh(root, "pr", "list", "--repo", REPOSITORY, "--base", target,
-                             "--head", branch, "--state", "open", "--json", "url,headRefOid"))
+                             "--head", branch, "--state", "open", "--json", "url,headRefOid,isDraft"))
     if len(existing) > 1:
         raise DevhubError("Mehrere offene PRs für denselben Korrekturbranch.")
     with tempfile.TemporaryDirectory(prefix="666repo-mind-") as directory:
@@ -235,15 +285,27 @@ def publish(root: Path, baseline: str, target: str) -> dict:
             elif not existing:
                 git(worktree, "push", "origin", f"HEAD:{head_ref}")
             if existing:
-                if remote != [existing[0]["headRefOid"], head_ref]:
+                if (remote != [existing[0]["headRefOid"], head_ref]
+                        or (draft and not existing[0].get("isDraft"))):
                     raise DevhubError("PR-Head stimmt nicht mit dem verifizierten Korrekturbranch überein.")
                 return {**report, "status": "EXISTING_PR", "url": existing[0]["url"]}
             if git(root, "ls-remote", "--refs", "origin", target_ref).split() != [head, target_ref]:
                 raise DevhubError("Der Zielbranch hat sich geändert. PR nach neuem Abgleich erstellen.")
             url = gh(root, "pr", "create", "--repo", REPOSITORY, "--base", target,
-                     "--head", branch, "--title", "666REPO-MIND · Markdown-Links",
+                     "--head", branch, *(("--draft",) if draft else ()),
+                     "--title", "666REPO-MIND · Markdown-Links",
                      "--body", f"Identische Zielblobs aus Git belegt. Basis: {head}. "
                      f"Linkkorrekturen: {report['eligible_fixes']}.")
+            if draft:
+                try:
+                    observed = json.loads(gh(root, "pr", "view", branch, "--repo", REPOSITORY,
+                                             "--json", "isDraft,headRefOid,baseRefName"))
+                    remote = git(root, "ls-remote", "--refs", "origin", head_ref).split()
+                except (DevhubError, ValueError):
+                    return {**report, "status": "READBACK_PENDING", "url": url}
+                if (not observed.get("isDraft") or observed.get("baseRefName") != target
+                        or remote != [observed.get("headRefOid"), head_ref]):
+                    return {**report, "status": "READBACK_PENDING", "url": url}
             return {**report, "status": "PR_CREATED", "url": url}
         finally:
             git(root, "worktree", "remove", "--force", str(worktree))

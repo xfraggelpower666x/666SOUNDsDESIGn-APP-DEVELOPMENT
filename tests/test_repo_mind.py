@@ -59,6 +59,21 @@ class RepoMindTests(unittest.TestCase):
         self.commit()
         self.assertEqual({}, repo_mind.scan(self.root, base)[1])
 
+    def test_review_exports_valid_diff_and_rejects_stale_release(self):
+        base, _ = self.rename_fixture()
+        review = repo_mind.review(self.root, base, "main")
+        diff = self.root / "review.patch"
+        diff.write_bytes(review["diff"].encode("utf-8"))
+        core.git(self.root, "apply", "--check", str(diff))
+        self.assertNotEqual(review["review_sha256"],
+                            repo_mind.review(self.root, base, "other")["review_sha256"])
+        self.write("docs/extra.md", "# New revision")
+        self.commit()
+        with patch.object(repo_mind, "gh") as github:
+            with self.assertRaisesRegex(core.DevhubError, "geändert"):
+                repo_mind.publish(self.root, base, "main", expected_review=review["review_sha256"])
+            github.assert_not_called()
+
     def test_publish_isolates_commit_and_reuses_verified_branch(self):
         base, head = self.rename_fixture()
         remote = Path(self.enterContext(tempfile.TemporaryDirectory())).resolve()
@@ -89,5 +104,21 @@ class RepoMindTests(unittest.TestCase):
             github_mock.side_effect = None
             github_mock.return_value = json.dumps([{"headRefOid": repair, "url": "https://example.test/pr/1"}])
             self.assertEqual("EXISTING_PR", repo_mind.publish(self.root, base, "main")["status"])
+            draft_branch = fixed_branch + "-draft"
+
+            def draft_github(root, *args):
+                if args[:2] == ("pr", "list"):
+                    return "[]"
+                if args[:2] == ("pr", "create"):
+                    self.assertIn("--draft", args)
+                    return "https://github.com/example/fixture/pull/2"
+                self.assertEqual(("pr", "view", draft_branch), args[:3])
+                draft_commit = core.git(remote, "rev-parse", f"refs/heads/{draft_branch}")
+                return json.dumps({"isDraft": True, "headRefOid": draft_commit, "baseRefName": "main"})
+
+            github_mock.side_effect = draft_github
+            review = repo_mind.review(self.root, base, "main")
+            result = repo_mind.publish(self.root, base, "main", expected_review=review["review_sha256"])
+            self.assertEqual("PR_CREATED", result["status"])
         self.assertEqual(head, core.git(self.root, "rev-parse", "HEAD"))
         self.assertEqual("", core.git(self.root, "status", "--porcelain"))

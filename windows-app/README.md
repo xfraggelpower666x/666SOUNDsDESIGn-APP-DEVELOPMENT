@@ -18,3 +18,21 @@ Zum Start ohne Fenster kann aus der Repo-Wurzel `py -3 windows-app\app.py --no-w
 exportieren** speichert das portable JSON für einen anderen Host. Beim Einlesen
 wird die Datei gegen die nativen Quellen geprüft. Details stehen im
 [LiveCircle-Vertrag](../docs/livecircle.md).
+
+## 666REPO-MIND
+
+Im Tab **Repo Mind** stehen der Quellkontext und die Ordnungsprüfung im selben
+Fenster bereit. **Quellkontext prüfen** übernimmt aus Desktop v0.3.1 die
+Dateipriorisierung und Python-Fundstellen anhand von Commit, Tree und Blob.
+Die Auswahl arbeitet mit dem ausgecheckten 666DEV-Repository.
+
+**Ordnung prüfen** und **Index neu erzeugen** verwenden die bestehenden
+[Repo-Mind-Regeln und Funktionen](../docs/repo-mind.md). Ein sicher zuordenbarer
+Markdown-Link erscheint im Review mit Diff und Prüfsumme. Der Diff ist als
+Patch speicherbar. **Draft-PR freigeben** verlangt eine ausdrückliche Bestätigung
+und prüft den Review vor Veröffentlichung erneut. Der separate Draft-PR
+benötigt GitHub CLI mit Schreibzugriff sowie einen Zielbranch auf dem geprüften HEAD.
+
+Diese Integration verwendet den lokalen Git-Pfad des Desktop-Pakets.
+Der separate modellgestützte Job-/Refine-Dienst und seine SQLite-Datenbank bleiben
+Funktionen von Repo Mind Desktop v0.3.1.

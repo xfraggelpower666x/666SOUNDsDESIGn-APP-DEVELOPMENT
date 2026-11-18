@@ -25,6 +25,7 @@ async function initialize() {
     get("head-state").textContent = state.head?.slice(0, 12) || "Offen";
     get("head-state").title = state.checkout;
     for (const key of ["repository", "ref", "base"]) get(key).value = state.config[key];
+    get("mind-target").value = state.config.ref;
     for (const project of state.projects) get("project").add(new Option(project, project));
     if (!document.querySelector('[data-panel="livecircle"]').hidden) refreshCircle();
   } catch (error) {
@@ -103,6 +104,15 @@ get("github-form").addEventListener("submit", async event => {
     get("github-result").textContent = error.message;
   }
 });
+function downloadText(content, name, type) {
+  const url = URL.createObjectURL(new Blob([content], {type}));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 async function refreshCircle({handoff, download = false} = {}) {
   const project = get("project").value;
   if (!csrf || !project) return;
@@ -114,12 +124,7 @@ async function refreshCircle({handoff, download = false} = {}) {
     const result = JSON.stringify(snapshot, null, 2);
     panel.textContent = result;
     if (download) {
-      const url = URL.createObjectURL(new Blob([result], {type: "application/json"}));
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `666dev-${project}-handoff.json`;
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      downloadText(result, `666dev-${project}-handoff.json`, "application/json");
     }
   } catch (error) {
     panel.textContent = error.message;
@@ -138,5 +143,84 @@ get("import-handoff").addEventListener("change", async event => {
   } catch (error) {
     get("livecircle-output").textContent = error.message;
   }
+});
+let mindReview;
+let mindBusy = false;
+function setMindReview(review) {
+  mindReview = review;
+  const usable = Boolean(review?.diff);
+  get("mind-diff").hidden = !usable;
+  get("mind-diff-heading").hidden = !usable;
+  get("mind-diff").textContent = review?.diff || "";
+  get("mind-download").disabled = !usable;
+  get("mind-publish").disabled = !usable || !review.rename_base;
+}
+
+async function mindAction(data) {
+  if (!csrf || mindBusy) return;
+  mindBusy = true;
+  const panel = get("mind-output");
+  const status = get("mind-status");
+  status.textContent = "Aktion läuft …";
+  try {
+    const response = await request("/api/repo-mind", data);
+    const {diff, ...summary} = response;
+    panel.textContent = JSON.stringify(summary, null, 2);
+    if (data.action === "review") {
+      if (get("mind-base").value.trim() !== data.base || get("mind-target").value.trim() !== data.target) {
+        status.textContent = "Die Eingaben haben sich geändert. Prüfe den Stand erneut.";
+        return;
+      }
+      setMindReview(response);
+      status.textContent = `${response.findings.length} Befunde · ${response.eligible_fixes} eindeutige Korrekturen`;
+      return;
+    }
+    status.textContent = response.status || "Quellkontext gelesen.";
+  } catch (error) {
+    status.textContent = error.message;
+    panel.textContent = "";
+  } finally {
+    mindBusy = false;
+  }
+}
+
+get("mind-context").addEventListener("submit", event => {
+  event.preventDefault();
+  if (mindBusy) return;
+  setMindReview(null);
+  const paths = get("mind-paths").value.split("\n").map(path => path.trim()).filter(Boolean);
+  mindAction({action: "context", instruction: get("mind-instruction").value, paths});
+});
+get("mind-review").addEventListener("submit", event => {
+  event.preventDefault();
+  if (mindBusy) return;
+  setMindReview(null);
+  mindAction({action: "review", base: get("mind-base").value.trim(), target: get("mind-target").value.trim()});
+});
+get("mind-index").addEventListener("click", () => {
+  if (mindBusy) return;
+  setMindReview(null);
+  mindAction({action: "index"});
+});
+for (const key of ["mind-base", "mind-target"]) {
+  get(key).addEventListener("input", () => setMindReview(null));
+}
+get("mind-download").addEventListener("click", () => {
+  if (mindReview?.diff) downloadText(mindReview.diff, "666repo-mind.patch", "text/plain");
+});
+get("mind-publish").addEventListener("click", () => {
+  if (!mindReview?.diff || mindBusy) return;
+  get("mind-confirm-summary").textContent =
+    `${mindReview.eligible_fixes} Linkkorrekturen für ${mindReview.target_branch} · Commit ${mindReview.commit.slice(0, 12)}`;
+  get("mind-confirm").showModal();
+});
+get("mind-confirm").addEventListener("close", () => {
+  const dialog = get("mind-confirm");
+  if (dialog.returnValue === "publish" && mindReview?.diff) {
+    const {rename_base, target_branch, review_sha256} = mindReview;
+    setMindReview(null);
+    mindAction({action: "publish", base: rename_base, target: target_branch, review_sha256});
+  }
+  dialog.returnValue = "";
 });
 initialize();

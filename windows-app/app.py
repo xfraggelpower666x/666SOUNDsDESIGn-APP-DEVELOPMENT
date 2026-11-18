@@ -23,6 +23,8 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from devhub.core import DevhubError, atomic_json, dashboard_data, project_entries, read_json
 from devhub.livecircle import resume, snapshot
+from devhub import repo_mind
+from devhub.repo_mind_context import inspect_sources
 
 UI = Path(__file__).resolve().parent / "ui"
 CONFIG = ROOT / ".work" / "windows-app" / "settings.json"
@@ -103,6 +105,30 @@ def github_probe(data):
             "commit": sha, "detail": "Commit über die GitHub-API gelesen."}
 
 
+def repo_mind_action(data):
+    action = data.get("action")
+    if action == "index":
+        return repo_mind.refresh_index(ROOT)
+    if action == "context":
+        instruction, paths = data.get("instruction", ""), data.get("paths", [])
+        if (not isinstance(instruction, str) or len(instruction) > 1000
+                or not isinstance(paths, list) or len(paths) > 8
+                or any(not isinstance(path, str) or not 1 <= len(path) <= 300 for path in paths)):
+            raise ValueError("Unzulässiger Quellauftrag.")
+        return inspect_sources(ROOT, instruction, paths)
+    base = data.get("base")
+    base = valid_ref(base) if base else None
+    target = valid_ref(data.get("target"))
+    if action == "review":
+        return repo_mind.review(ROOT, base, target)
+    if action == "publish":
+        digest = data.get("review_sha256")
+        if not base or not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest):
+            raise ValueError("Für die Freigabe werden Umbenennungsbasis und Review-Prüfsumme benötigt.")
+        return repo_mind.publish(ROOT, base, target, expected_review=digest)
+    raise ValueError("Unbekannte Repo-Mind-Aktion.")
+
+
 class ControlServer(ThreadingHTTPServer):
     def __init__(self, port):
         super().__init__(("127.0.0.1", port), Handler)
@@ -179,6 +205,9 @@ class Handler(BaseHTTPRequestHandler):
                     raise ValueError("Unbekanntes Projekt.")
                 report = resume(project, data["handoff"]) if "handoff" in data else snapshot(project)
                 self.json(200, report)
+            elif route == "/api/repo-mind":
+                with self.server.operation:
+                    self.json(200, repo_mind_action(data))
             elif route == "/api/action":
                 with self.server.operation:
                     self.json(200, run_action(data))
