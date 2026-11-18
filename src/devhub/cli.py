@@ -198,6 +198,8 @@ def _checkpoint_action(project_id: str, action: str) -> dict:
 
 
 def render_status(project_id: str | None = None) -> str:
+    from .livecircle import snapshot
+
     ids = [project_id] if project_id else sorted(project_entries())
     lines = []
     for selected in ids:
