@@ -5,7 +5,7 @@ lokalen Exportdateien. CLI und Windows Control verwenden denselben Datenbestand.
 
 ## Windows Control
 
-Anwendung wie gewohnt starten und **Chat-Archiv** öffnen. Im Explorer den Export
+Anwendung wie gewohnt starten und **Repo Mind → Chat-Archiv** öffnen. Im Explorer den Export
 mit **Als Pfad kopieren** auswählen, den Pfad einfügen und importieren. Über die
 Suche lassen sich Titel und Nachrichtentext durchsuchen. Ein leeres Suchfeld zeigt
 die 50 zuletzt neu eingelesenen Chat-Stände. **Markdown exportieren** erstellt eine

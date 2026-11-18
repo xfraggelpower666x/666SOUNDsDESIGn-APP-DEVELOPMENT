@@ -30,7 +30,7 @@ async function initialize() {
     for (const project of state.projects) get("project").add(new Option(project, project));
     if (!document.querySelector('[data-panel="livecircle"]').hidden) refreshCircle();
     if (!document.querySelector('[data-panel="visualforms"]').hidden) openVisualforms();
-    if (!document.querySelector('[data-panel="chat-archive"]').hidden) runChatArchive({action: "SEARCH"});
+    refreshVisibleChatArchive();
   } catch (error) {
     get("local-state").textContent = "Nicht erreichbar";
     message.textContent = error.message;
@@ -91,13 +91,25 @@ for (const button of document.querySelectorAll("[data-view]")) {
     for (const panel of document.querySelectorAll("[data-panel]")) panel.hidden = panel.dataset.panel !== button.dataset.view;
     if (button.dataset.view === "livecircle") refreshCircle();
     if (button.dataset.view === "visualforms") openVisualforms();
-    if (button.dataset.view === "chat-archive") runChatArchive({action: "SEARCH"});
+    if (button.dataset.view === "repo-mind") refreshVisibleChatArchive();
     if (button.dataset.view === "dashboard") {
       const project = encodeURIComponent(get("project").value);
       get("dashboard-frame").src = "/dashboard/?project=" + project;
     }
   });
 }
+const repoMindPanel = document.querySelector('[data-panel="repo-mind"]');
+const mindViews = repoMindPanel.querySelectorAll("[data-mind-view]");
+for (const button of mindViews) {
+  button.addEventListener("click", () => {
+    for (const view of mindViews) view.setAttribute("aria-pressed", String(view === button));
+    for (const panel of repoMindPanel.querySelectorAll("[data-mind-panel]")) {
+      panel.hidden = panel.id !== button.getAttribute("aria-controls");
+    }
+    refreshVisibleChatArchive();
+  });
+}
+
 for (const button of document.querySelectorAll("[data-action]")) {
   button.addEventListener("click", () => {
     if (button.dataset.action === "UPDATE") {
@@ -148,6 +160,12 @@ function downloadText(content, name, type) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+function refreshVisibleChatArchive() {
+  if (!repoMindPanel.hidden && !get("mind-chat-archive").hidden) {
+    runChatArchive({action: "SEARCH", query: get("chat-query").value});
+  }
+}
+
 async function runChatArchive(data) {
   const status = get("chat-status");
   if (chatArchiveBusy) return;
@@ -155,7 +173,7 @@ async function runChatArchive(data) {
     status.textContent = "Die lokale Anwendungssitzung wird noch aufgebaut.";
     return;
   }
-  const buttons = document.querySelectorAll('[data-panel="chat-archive"] button');
+  const buttons = get("mind-chat-archive").querySelectorAll("button");
   chatArchiveBusy = true;
   for (const button of buttons) button.disabled = true;
   status.textContent = data.action === "IMPORT" ? "Export wird eingelesen …" : "";

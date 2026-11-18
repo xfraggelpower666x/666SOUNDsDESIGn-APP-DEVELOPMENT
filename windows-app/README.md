@@ -21,8 +21,8 @@ wird die Datei gegen die nativen Quellen geprüft. Details stehen im
 
 ## 666REPO-MIND
 
-Im Tab **Repo Mind** stehen der Quellkontext und die Ordnungsprüfung im selben
-Fenster bereit. **Quellkontext prüfen** übernimmt aus Desktop v0.3.1 die
+Unter **Repo Mind → Repo-Analyse** stehen der Quellkontext und die Ordnungsprüfung
+im selben Fenster bereit. **Quellkontext prüfen** übernimmt aus Desktop v0.3.1 die
 Dateipriorisierung und Python-Fundstellen anhand von Commit, Tree und Blob.
 Die Auswahl arbeitet mit dem ausgecheckten 666DEV-Repository.
 
@@ -75,6 +75,6 @@ Deployment haben eigene Nachweise.
 
 ## Chat-Archiv
 
-Im Tab **Chat-Archiv** den vollständigen lokalen Pfad zu einem ChatGPT- oder
+Unter **Repo Mind → Chat-Archiv** den vollständigen lokalen Pfad zu einem ChatGPT- oder
 AI-Exporter-Download einfügen und importieren. Die Suche und der Markdown-Export
 nutzen denselben lokalen Index wie die CLI. [Formate und Speicherpfad](../docs/chat-archive.md).

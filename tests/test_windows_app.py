@@ -86,7 +86,13 @@ class WindowsAppTest(unittest.TestCase):
 
     def test_chat_archive_requires_local_session_and_shares_the_core_index(self):
         _, headers = self.session()
-        self.assertIn(b"Chat-Archiv", self.request("/")[1])
+        _, html = self.request("/")
+        self.assertNotIn(b'data-view="chat-archive"', html)
+        _, _, body = html.partition(b'<section data-panel="repo-mind"')
+        repo_mind = body.partition(b"</section>")[0]
+        self.assertIn(b'data-mind-view="chat-archive" aria-controls="mind-chat-archive"', repo_mind)
+        self.assertIn(b'id="mind-chat-archive" data-mind-panel="chat-archive" hidden', repo_mind)
+        self.assertIn(b'id="chat-import"', repo_mind)
         route = "/api/chat-archive"
         self.assertEqual(403, self.request(route, {"action": "SEARCH"})[0])
         scope = self.config.parent
