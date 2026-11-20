@@ -28,6 +28,7 @@ async function initialize() {
     get("mind-target").value = state.config.ref;
     for (const project of state.projects) get("project").add(new Option(project, project));
     if (!document.querySelector('[data-panel="livecircle"]').hidden) refreshCircle();
+    if (!document.querySelector('[data-panel="operations"]').hidden) refreshOperations();
     if (!document.querySelector('[data-panel="visualforms"]').hidden) openVisualforms();
   } catch (error) {
     get("local-state").textContent = "Nicht erreichbar";
@@ -88,6 +89,7 @@ for (const button of document.querySelectorAll("[data-view]")) {
     for (const tab of document.querySelectorAll("[data-view]")) tab.setAttribute("aria-pressed", String(tab === button));
     for (const panel of document.querySelectorAll("[data-panel]")) panel.hidden = panel.dataset.panel !== button.dataset.view;
     if (button.dataset.view === "livecircle") refreshCircle();
+    if (button.dataset.view === "operations") refreshOperations();
     if (button.dataset.view === "visualforms") openVisualforms();
     if (button.dataset.view === "dashboard") {
       const project = encodeURIComponent(get("project").value);
@@ -306,5 +308,70 @@ get("mind-confirm").addEventListener("close", () => {
     mindAction({action: "publish", base: rename_base, target: target_branch, review_sha256});
   }
   dialog.returnValue = "";
+});
+let operationsSequence = 0;
+let operationsRecommendation;
+
+async function refreshOperations() {
+  if (!csrf) return;
+  const project = get("project").value;
+  const sequence = ++operationsSequence;
+  const endpoint = "/api/operations-center?project=" + encodeURIComponent(project);
+  get("operations-status").textContent = "Native Quellen werden geprüft …";
+  get("operations-next").disabled = true;
+  try {
+    const data = await request(endpoint);
+    if (sequence !== operationsSequence || project !== get("project").value) return;
+    get("operations-status").textContent = `${data.status} · ${data.project_id || "Kein Projekt"} · ${data.source?.source_commit || "Revision offen"}`;
+    const menu = get("operations-menu");
+    menu.replaceChildren();
+    for (const item of data.navigation) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = item.title;
+      button.title = item.description;
+      button.addEventListener("click", () => {
+        const destination = {overview:"operations", codeforge:"controls", repomind:"repo-mind",
+          continuity:"livecircle", visual:"visualforms", desktop:"settings"}[item.id];
+        const tab = document.querySelector(`[data-view="${destination}"]`);
+        if (tab) tab.click();
+      });
+      menu.appendChild(button);
+    }
+    const next = data.visual_daemon.primary_action;
+    operationsRecommendation = next.eligible && next.kind === "read_only" ? next : null;
+    get("operations-next").disabled = !operationsRecommendation;
+    get("operations-daemon").textContent = next.label + (next.eligible ? "" : " · Projektbindung erforderlich");
+    get("operations-reason").textContent = next.reason + " Gegenprobe: " + next.countercheck;
+    get("operations-evidence").textContent = JSON.stringify({
+      source: data.source, sub_livecircles: data.facets,
+      host_acceptance: data.host_acceptance,
+      plugin_acceptance: data.plugin_acceptance,
+    }, null, 2);
+  } catch (error) {
+    if (sequence === operationsSequence) {
+      get("operations-status").textContent = "READBACK_PENDING · " + error.message;
+      get("operations-evidence").textContent = "";
+    }
+  }
+}
+get("operations-refresh").addEventListener("click", refreshOperations);
+get("operations-next").addEventListener("click", () => {
+  if (!operationsRecommendation) return;
+  const command = operationsRecommendation.action;
+  if (!Array.isArray(command) || command[0] !== "666DEV" || command[1] !== get("project").value
+      || !["STATUS","IMPACT","LIVECIRCLE","REHYDRATE"].includes(command[2])) return;
+  if (command[2] === "LIVECIRCLE" || command[2] === "REHYDRATE") {
+    document.querySelector('[data-view="livecircle"]').click();
+  } else {
+    document.querySelector('[data-view="controls"]').click();
+    action(command[2]);
+  }
+});
+get("project").addEventListener("change", () => {
+  operationsSequence++;
+  operationsRecommendation = null;
+  get("operations-next").disabled = true;
+  if (!document.querySelector('[data-panel="operations"]').hidden) refreshOperations();
 });
 initialize();
