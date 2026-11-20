@@ -23,7 +23,8 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from devhub.core import DevhubError, atomic_json, dashboard_data, project_entries, read_json
 from devhub.livecircle import resume, snapshot
-from devhub.intelligence.operations import build_operations_center
+from devhub.intelligence.operations import FACETS, build_operations_center
+from devhub.intelligence.facet_store import read_checkpoint
 from devhub import repo_mind
 from devhub.repo_mind_context import inspect_sources
 from devhub.visualforms import ASSET_FILES as VISUAL_ASSETS, render_workspace
@@ -224,7 +225,10 @@ class Handler(BaseHTTPRequestHandler):
                     return
                 project = values[0]
                 native = snapshot(project) if project else None
-                self.json(200, build_operations_center(native, registry=project_entries()))
+                records = ({facet_id: read_checkpoint(project, facet_id, native)
+                            for facet_id, _, _ in FACETS} if project else {})
+                self.json(200, build_operations_center(native, registry=project_entries(),
+                                                       facet_records=records))
             elif route == "/dashboard.json":
                 self.json(200, dashboard_data())
             elif route == "/api/state":
