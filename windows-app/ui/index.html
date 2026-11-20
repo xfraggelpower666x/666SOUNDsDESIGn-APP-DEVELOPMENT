@@ -12,6 +12,7 @@
     <div><p class="brand">666SOUNDsDESIGn</p><h1>666<span>DEV</span></h1></div>
     <nav aria-label="Ansicht">
       <button data-view="controls" aria-pressed="true">Steuerung</button>
+      <button data-view="operations" aria-pressed="false">Operations Center</button>
       <button data-view="dashboard" aria-pressed="false">Dashboard</button>
       <button data-view="visualforms" aria-pressed="false">Visualformen</button>
       <button data-view="livecircle" aria-pressed="false">LiveCircle</button>
@@ -47,6 +48,21 @@
         </div>
       </div>
       <div class="output"><h2>Ausgabe</h2><pre id="output" tabindex="0">Aktion auswählen.</pre></div>
+    </section>
+    <section data-panel="operations" class="pane dashboard operations" hidden>
+      <div class="operations-head">
+        <h2>Intelligent Operations Center</h2>
+        <p id="operations-status" role="status">Native Projektbasis wird nach Auswahl gelesen.</p>
+        <button id="operations-refresh" type="button">Quellen erneut prüfen</button>
+      </div>
+      <div id="operations-menu" class="operations-grid" aria-label="Facetten"></div>
+      <section class="operations-companion" aria-label="Visual Daemon">
+        <h2>Visual Daemon · nächste lesende Prüfung</h2>
+        <p id="operations-daemon">Projektbasis offen.</p>
+        <p id="operations-reason"></p>
+        <button id="operations-next" type="button" disabled>Lesende Prüfung anzeigen</button>
+      </section>
+      <pre id="operations-evidence" tabindex="0" aria-label="Quellenbelege"></pre>
     </section>
     <section data-panel="dashboard" class="pane dashboard" hidden>
       <iframe title="666DEV Projekt-Dashboard" id="dashboard-frame"></iframe>
