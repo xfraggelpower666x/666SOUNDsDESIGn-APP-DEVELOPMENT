@@ -25,6 +25,7 @@ HELP = """666DEV commands (parsed only from this direct invocation):
   666DEV <PROJECT-ID> LIVECIRCLE|REHYDRATE|NEW-CHAT
   666DEV <PROJECT-ID> NEXT-CHAT <handoff.json>
   666DEV <PROJECT-ID> IMPACT [BASE]
+  666DEV <PROJECT-ID> CAUSAL [BASE] (read-only R03 plan)
   666DEV <PROJECT-ID> MANIFEST [manifest.json|cards.zip]
   666DEV <PROJECT-ID> PATCH-APPLY <candidate.json>
   666DEV <PROJECT-ID> FACET-STATUS <facet-id>
@@ -366,7 +367,7 @@ def execute(tokens: list[str]) -> str:
     if action == "FUCK" and len(normalized) in (4, 5) and normalized[3].upper() == "HORST":
         handoff = _read_handoff(normalized[4]) if len(normalized) == 5 else None
         return json.dumps(diagnose(project_id, handoff), indent=2, ensure_ascii=False)
-    if action not in {"PATCH-APPLY", "MANIFEST", "IMPACT", "NEXT-CHAT", "FACET-STATUS", "FACET-SAVE"} and len(normalized) != 3:
+    if action not in {"PATCH-APPLY", "MANIFEST", "IMPACT", "CAUSAL", "NEXT-CHAT", "FACET-STATUS", "FACET-SAVE"} and len(normalized) != 3:
         raise DevhubError(f"{action} takes only a project ID.")
     if action == "STATUS":
         return render_status(project_id)
@@ -398,6 +399,22 @@ def execute(tokens: list[str]) -> str:
             raise DevhubError("Facet input schema mismatch.")
         report = save_checkpoint(project_id, facet, native, **payload)
         return json.dumps(report, indent=2, ensure_ascii=False)
+    if action == "CAUSAL":
+        from .impact import project_impact
+        from .intelligence.causal_learning import plan_revalidation
+        if len(normalized) > 4:
+            raise DevhubError("CAUSAL accepts only one optional Git base.")
+        from .livecircle import snapshot
+        observed = snapshot(project_id)
+        if observed["status"] in {"READBACK_PENDING", "CONFLICT_QUARANTINE", "BLOCKIERT", "WRITE_BLOCKED"}:
+            return json.dumps({"status": "READBACK_PENDING", "reason": "Native project cannot be safely analyzed.",
+                               "project_id": project_id, "source_revision": observed.get("source_commit"),
+                               "recheck_all": True, "checks": []}, indent=2, ensure_ascii=False)
+        state = rehydrate(project_id, initialize_demo=False)
+        base = normalized[3] if len(normalized) == 4 else None
+        impact = project_impact(state, base=base)
+        return json.dumps(plan_revalidation(impact, project_id=project_id,
+                          revision=state["revision"]["commit"]), indent=2, ensure_ascii=False)
     if action == "IMPACT":
         from .impact import project_impact
 
