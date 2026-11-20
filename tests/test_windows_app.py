@@ -60,6 +60,27 @@ class WindowsAppTest(unittest.TestCase):
         self.assertEqual(status, 400)
         self.assertIn("bestätigt", json.loads(result)["error"])
 
+    def test_operations_center_is_native_read_only_and_local(self):
+        self.assertEqual(403, self.request("/api/operations-center", Host="external.example")[0])
+        self.assertEqual(400, self.request("/api/operations-center?project=unknown")[0])
+        self.assertEqual(400, self.request("/api/operations-center?project=demo-monorepo&project=demo-linked")[0])
+        status, body = self.request("/api/operations-center")
+        self.assertEqual(200, status)
+        overview = json.loads(body)
+        self.assertEqual("OFFEN", overview["status"])
+        self.assertFalse(overview["visual_daemon"]["can_autowrite"])
+        self.assertIsNone(overview["project_id"])
+        status, body = self.request("/api/operations-center?project=demo-monorepo")
+        self.assertEqual(200, status)
+        result = json.loads(body)
+        native = app.snapshot("demo-monorepo")
+        self.assertEqual(native["status"], result["status"])
+        self.assertEqual(native["source_commit"], result["source"]["source_commit"])
+        self.assertEqual(6, len(result["facets"]))
+        self.assertEqual("OFFEN", result["host_acceptance"])
+        self.assertFalse(result["visual_daemon"]["can_run_background"])
+        self.assertIn(b"Operations Center", self.request("/")[1])
+
     def test_visualforms_uses_local_native_evidence_and_is_read_only(self):
         self.assertEqual(403, self.request("/visualforms/", Host="external.example")[0])
         self.assertEqual(400, self.request("/visualforms/?project=unknown")[0])
