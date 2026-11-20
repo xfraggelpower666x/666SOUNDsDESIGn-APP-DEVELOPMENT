@@ -85,3 +85,15 @@ the CLI command. The native root/project Current pointers remain untouched.
 
 R03 candidates: causal test invalidation, outcome validation and learning;
 cross-host synchronization of facet checkpoints and real Windows host tests.
+
+## R02 plugin parity · 2026-11-20
+
+Private plugin: `666dev-coding-control`, version `0.1.8`, release
+`pluginrel_6b00c787f5448191bc3b765b3378c228`.
+The provider readback confirmed both manifests at `0.1.8`, the R02
+Operations Center skill, and preservation of the original LiveCircle skill.
+Plugin source delivery is VERIFIED; fresh ChatGPT-host acceptance remains OPEN.
+The source checkout at R02 commit `dec0663ac70f8b22dbd2fc2c02c53612f1e605a5`
+passed GitHub workflow `666DEV verify`, run `44826564251`.
+Plugin version and source CI do not prove native Windows or production HOST acceptance.
+This entry is documentation only: project Working/Current and state pointers are unchanged.
