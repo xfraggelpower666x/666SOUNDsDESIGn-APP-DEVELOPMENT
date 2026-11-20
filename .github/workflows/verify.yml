@@ -40,3 +40,34 @@ jobs:
           git merge-base "$RENAME_BASE" HEAD > "$RUNNER_TEMP/666repo-mind-base"
           python -m devhub.cli 666DEV REPO-MIND CHECK "$(cat "$RUNNER_TEMP/666repo-mind-base")"
           python -m devhub.cli 666DEV REPO-MIND INDEX
+
+      - name: Build revision-bound recovery artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/666dev-recovery"
+          git archive --format=zip --output="$RUNNER_TEMP/666dev-recovery/666DEV-source.zip" HEAD
+          git bundle create "$RUNNER_TEMP/666dev-recovery/666DEV-history.bundle" HEAD
+          git bundle verify "$RUNNER_TEMP/666dev-recovery/666DEV-history.bundle"
+          python - <<'PYREC'
+          import hashlib, json, os, pathlib, subprocess
+          root = pathlib.Path(os.environ["RUNNER_TEMP"]) / "666dev-recovery"
+          result = {"schema": "666dev-recovery/v1",
+                    "scope": "tracked source at HEAD and Git history reachable from HEAD",
+                    "excluded": ["ignored .work state", "working tree local data", "unreachable branches"],
+                    "commit": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
+                    "tree": subprocess.check_output(["git", "rev-parse", "HEAD^{tree}"], text=True).strip(),
+                    "artifacts": {}}
+          for item in ("666DEV-source.zip", "666DEV-history.bundle"):
+              path = root / item
+              result["artifacts"][item] = {"bytes": path.stat().st_size,
+                                          "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+          (root / "manifest.json").write_text(json.dumps(result, indent=2) + "\\n")
+          PYREC
+      - name: Publish revision-bound recovery artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: 666DEV-recovery-${{ github.sha }}
+          path: ${{ runner.temp }}/666dev-recovery/
+          retention-days: 30
+          if-no-files-found: error
