@@ -30,7 +30,7 @@ def _status(native: Mapping[str, Any] | None) -> str:
     if not native:
         return "OFFEN"
     value = native.get("status")
-    return value if value in STATUSES else "READBACK_PENDING"
+    return value if isinstance(value, str) and value in STATUSES else "READBACK_PENDING"
 
 def _proof(native: Mapping[str, Any] | None) -> dict:
     return {key: native.get(key) if native else None
