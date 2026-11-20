@@ -36,7 +36,8 @@ def _proof(native: Mapping[str, Any] | None) -> dict:
     return {key: native.get(key) if native else None
             for key in ("hub_commit", "source_commit", "profile_sha256")}
 
-def facet_projection(facet_id: str, native: Mapping[str, Any] | None,\n                     persisted: Mapping[str, Any] | None = None) -> dict:
+def facet_projection(facet_id: str, native: Mapping[str, Any] | None,
+                     persisted: Mapping[str, Any] | None = None) -> dict:
     """Sub-LifeCircle display only; no second persistence or authority."""
     if facet_id not in {item[0] for item in FACETS}:
         raise ValueError("Unregistered 666DEV facet")
@@ -88,7 +89,9 @@ def _next(native: Mapping[str, Any] | None) -> dict:
             "evidence": ["native.status", "native.source_commit"],
             "countercheck": "Quellstand und Prüfergebnis direkt zurücklesen."}
 
-def build_operations_center(native: Mapping[str, Any] | None = None,\n                            *, registry: Mapping[str, str] | None = None,\n                            facet_records: Mapping[str, dict] | None = None) -> dict:
+def build_operations_center(native: Mapping[str, Any] | None = None,
+                            *, registry: Mapping[str, str] | None = None,
+                            facet_records: Mapping[str, dict] | None = None) -> dict:
     """Construct advisory view from a *caller-verified* native snapshot."""
     bound = _bound(native)
     value = _status(native) if bound else "OFFEN"
