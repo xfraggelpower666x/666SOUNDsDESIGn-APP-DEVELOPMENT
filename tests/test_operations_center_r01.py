@@ -52,6 +52,29 @@ class OperationsCenterTests(unittest.TestCase):
         self.assertEqual("READBACK_PENDING", result["status"])
         self.assertEqual("HOLD", result["visual_daemon"]["state"])
 
+    def test_r02_verified_checkpoint_projection(self):
+        recorded = {"status": "VERIFIZIERT", "digest": "d"*64,
+                    "reason": "Matches revision",
+                    "checkpoint": {"state": "PAUSED", "last_verified_step": "audit",
+                                   "obligations": ["host-test"], "evidence_ids": ["test-1"],
+                                   "return_anchor": "next-step"}}
+        projected = build_operations_center(native(), facet_records={"codeforge": recorded})
+        codeforge = next(item for item in projected["facets"] if item["facet_id"] == "codeforge")
+        self.assertEqual("VERIFIZIERT", codeforge["rehydration"])
+        self.assertEqual("PAUSED", codeforge["work_state"])
+        self.assertEqual(["host-test"], codeforge["obligations"])
+        other = next(item for item in projected["facets"] if item["facet_id"] == "desktop")
+        self.assertIsNone(other["work_state"])
+        self.assertFalse(codeforge["writable"])
+
+    def test_r02_stale_checkpoint_not_promoted(self):
+        projected = build_operations_center(native(), facet_records={"codeforge": {
+            "status": "PARTIAL", "digest": "e"*64,
+            "reason": "Old revision", "checkpoint": None}})
+        codeforge = next(item for item in projected["facets"] if item["facet_id"] == "codeforge")
+        self.assertEqual("PARTIAL", codeforge["rehydration"])
+        self.assertIsNone(codeforge["last_verified_step"])
+
     def test_no_host_claim(self):
         result = build_operations_center(native())
         self.assertEqual("OFFEN", result["host_acceptance"])
