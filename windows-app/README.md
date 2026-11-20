@@ -72,3 +72,14 @@ Unter **Einstellungen** kannst du für den eingestellten GitHub-Branch
 einen vollständigen erwarteten Commit eingeben. Ein erfolgreicher
 Abgleich bestätigt den Branch-Stand zum Abrufzeitpunkt. Tests und
 Deployment haben eigene Nachweise.
+
+## Operations Center R01
+
+Der zusätzliche Reiter **Operations Center** liest über
+`GET /api/operations-center?project=<id>` den nativen LiveCircle und
+zeigt sechs lesende Facetten sowie den Visual Daemon. Das Menü navigiert
+zu den bestehenden Ansichten, statt eigene State- oder Schreibprozesse zu
+starten. Eine Empfehlung mit `CONFLICT_QUARANTINE` oder
+`READBACK_PENDING` bleibt auf Quellklärung begrenzt.
+Die Operations-Ansicht benötigt keine weiteren Python-Abhängigkeiten.
+Native Windows-Akzeptanz und Plugin-Host-Parität sind separat zu prüfen.
