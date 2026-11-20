@@ -254,3 +254,28 @@ aus `checkpoint_review.py`, exakter Remote-Abgleich aus
 `Git-Workflow.ps1` und die drei Änderungen für `format_id` im
 Visualformen-Renderer. Die native 666DEV-Registry und der native
 Checkpoint-Vertrag bestimmen weiterhin das Ziel.
+
+## R01 Operations Center und Sub-LiveCircle-Projektion
+
+Der zusätzliche, lesende Vertrag `666dev-operations-center/v1` liegt unter
+`src/devhub/intelligence/operations.py`. Er liest den nativen `snapshot`
+und die Projektregistry, hat keine Git-/Netzwerk-/Write-Routinen und erstellt
+sechs Facetten-Projektionen (`666dev-facet-livecircle/v1`).
+**Es handelt sich nicht um persistente Sub-LifeCircles.** Bis zu einer
+eigenen geprüften Task-Evidenz bleiben `last_verified_step=null`,
+`obligations=[]` und `evidence_ids=[]`. Fremde Systemidentitäten
+werden nicht importiert.
+
+Windows Control zeigt den Status unter **Operations Center**. Der auf Loopback
+beschränkte GET-Endpunkt `/api/operations-center?project=<id>` fragt den
+nativen Stand frisch ab; eine unbekannte Projekt-ID wird abgewiesen.
+Der Visual Daemon schlägt nur `STATUS`, `IMPACT` oder den lesenden
+`LIVECIRCLE` vor. Ein Klick nutzt die bereits vorhandenen UI-Aktionen,
+nicht einen neuen privilegierten Executor. Projektwechsel verwerfen die
+frühere Empfehlung. HOST und Plugin-Akzeptanz bleiben `OFFEN`,
+bis echte unabhängige Abnahmen vorliegen.
+
+Nächste Ausbaustufen: gesicherte Sub-LiveCircle-Working-Ledger,
+kausale Testinvalidierung, revisionsgebundenes Outcome-Learning, native
+Windows-Hostabnahme und Plugin-Hostparität. Diese Funktionen werden durch
+das vorliegende R01-Modul **nicht** als fertig behauptet.
