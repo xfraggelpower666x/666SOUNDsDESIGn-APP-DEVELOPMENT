@@ -141,8 +141,10 @@ def save_checkpoint(project_id: str, facet_id: str, native: dict, *,
     # Atomic exclusive lock protects the compare-and-swap from concurrent hosts.
     lock = path.with_suffix(".lock")
     fd = None
+    acquired = False
     try:
         fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        acquired = True
         os.close(fd)
         fd = None
         existing = read_checkpoint(project_id, facet_id, native)
@@ -170,6 +172,6 @@ def save_checkpoint(project_id: str, facet_id: str, native: dict, *,
     finally:
         if fd is not None:
             os.close(fd)
-        # Only remove a lock acquired in this invocation.
-        if 'record' in locals() or 'existing' in locals():
+        # Never remove a lock owned by another invocation.
+        if acquired:
             lock.unlink(missing_ok=True)
