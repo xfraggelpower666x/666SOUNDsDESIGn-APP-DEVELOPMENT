@@ -89,3 +89,13 @@ dialog::backdrop { background: #090612cc; }
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+/* R01: additive, accessible Operations Center; native status is always text. */
+.pane.operations { display: block; }
+.operations-head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.operations-head h2 { margin-right: auto; }
+.operations-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin: 14px 0; }
+.operations-grid button { border-color: var(--cyan); text-align: left; min-height: 50px; }
+.operations-companion { padding: 14px; border-top: 2px solid var(--pink); background: #21152f; border-radius: 7px; }
+.operations-companion h2 { color: var(--pink); }
+#operations-evidence { margin-top: 12px; max-height: 28vh; min-height: 8rem; }
