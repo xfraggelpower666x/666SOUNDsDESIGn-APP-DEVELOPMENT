@@ -26,3 +26,11 @@ GitHub CI establishes repository regression only; it does not establish Windows 
 - Add independently verified receipts for outcome decisions.
 - Add explicit scope-approved learned state only once a separate policy and migration are reviewed.
 - Verify Windows keyboard, browser, .cmd and plugin-host behavior in their actual hosts.
+
+## R03 plugin parity · 2026-11-20
+
+- `666dev-coding-control` release `0.1.9`, ID `pluginrel_6b00ca6eca6481918f00b75c320521f6`.
+- Provider readback: both plugin manifests `0.1.9`, R03 Operations Center skill, original LiveCircle skill retained, 43 keywords retained.
+- GitHub repository implementation was verified at commit `531be27232d6eda9a8738691d00cd63f945d8aec`; workflow `666DEV verify` run `44829667821` completed successfully.
+- Plugin source publication `VERIFIZIERT`; plugin host behavior and native Windows CMD/click-path remain `OFFEN`.
+- No productive project Current, facet checkpoint or learning rule was created or promoted.
