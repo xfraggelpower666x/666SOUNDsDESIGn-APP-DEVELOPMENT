@@ -33,7 +33,7 @@ UI = Path(__file__).resolve().parent / "ui"
 CONFIG = ROOT / ".work" / "windows-app" / "settings.json"
 DEFAULTS = {"repository": "xfraggelpower666x/666SOUNDsDESIGn-APP-DEVELOPMENT",
             "ref": "copilot/666dev-initial-functional-setup", "base": "HEAD"}
-ACTIONS = ("STATUS", "CONTEXT", "IMPACT", "SYSTEMSTART", "CODEFORGE",
+ACTIONS = ("STATUS", "CONTEXT", "IMPACT", "CAUSAL", "SYSTEMSTART", "CODEFORGE",
            "SUPERCODEFORGE", "WEITER", "BUILD", "FREEZE", "UPDATE")
 ASSETS = {
     "/": (UI / "index.html", "text/html"),
@@ -294,7 +294,7 @@ def run_action(data):
     if action == "UPDATE" and data.get("confirmed") is not True:
         raise ValueError("Current-Update muss bestätigt werden.")
     args = [sys.executable, "-m", "devhub.cli", "666DEV", project, action]
-    if action == "IMPACT":
+    if action in {"IMPACT", "CAUSAL"}:
         # Die standardmäßige Basis des Livecircle beibehalten, sofern kein Ref gewählt wurde.
         base = settings()["base"]
         if base != "HEAD":
