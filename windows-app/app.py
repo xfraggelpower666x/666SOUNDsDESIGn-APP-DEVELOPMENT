@@ -23,6 +23,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from devhub.core import DevhubError, atomic_json, dashboard_data, project_entries, read_json
 from devhub.livecircle import resume, snapshot
+from devhub.intelligence.operations import build_operations_center
 from devhub import repo_mind
 from devhub.repo_mind_context import inspect_sources
 from devhub.visualforms import ASSET_FILES as VISUAL_ASSETS, render_workspace
@@ -215,6 +216,15 @@ class Handler(BaseHTTPRequestHandler):
                     f"default-src 'none'; script-src 'nonce-{nonce}'; style-src 'unsafe-inline'; "
                     "frame-ancestors 'self'; base-uri 'none'; form-action 'none'; sandbox allow-scripts allow-forms"
                 ))
+            elif route == "/api/operations-center":
+                query = parse_qs(url.query, keep_blank_values=True)
+                values = query.get("project", [""])
+                if len(values) != 1 or (values[0] and values[0] not in project_entries()):
+                    self.json(400, {"error": "Unbekanntes Projekt."})
+                    return
+                project = values[0]
+                native = snapshot(project) if project else None
+                self.json(200, build_operations_center(native, registry=project_entries()))
             elif route == "/dashboard.json":
                 self.json(200, dashboard_data())
             elif route == "/api/state":
