@@ -36,12 +36,16 @@ def _proof(native: Mapping[str, Any] | None) -> dict:
     return {key: native.get(key) if native else None
             for key in ("hub_commit", "source_commit", "profile_sha256")}
 
-def facet_projection(facet_id: str, native: Mapping[str, Any] | None) -> dict:
+def facet_projection(facet_id: str, native: Mapping[str, Any] | None,\n                     persisted: Mapping[str, Any] | None = None) -> dict:
     """Sub-LifeCircle display only; no second persistence or authority."""
     if facet_id not in {item[0] for item in FACETS}:
         raise ValueError("Unregistered 666DEV facet")
     bound = _bound(native)
     value = _status(native) if bound else "OFFEN"
+    accepted = persisted if isinstance(persisted, Mapping) else None
+    restored = accepted.get("checkpoint") if accepted and accepted.get("status") == "VERIFIZIERT" else None
+    if not isinstance(restored, Mapping):
+        restored = None
     return {
         "schema": FACET_SCHEMA, "owner": "666DEV", "facet_id": facet_id,
         "project_id": native["project_id"] if bound else None,
@@ -49,9 +53,15 @@ def facet_projection(facet_id: str, native: Mapping[str, Any] | None) -> dict:
         "working": native.get("working") if bound else None,
         "current": native.get("current") if bound else None,
         "return_anchor": native.get("return_anchor") if bound else None,
-        "last_verified_step": None, "obligations": [], "evidence_ids": [],
-        "rehydration": ("READBACK_PENDING" if not bound or value in HOLDS
-                        else "NATIVE_SNAPSHOT_PROJECTION_ONLY"),
+        "last_verified_step": restored.get("last_verified_step") if restored else None,
+        "obligations": list(restored.get("obligations", [])) if restored else [],
+        "evidence_ids": list(restored.get("evidence_ids", [])) if restored else [],
+        "work_state": restored.get("state") if restored else None,
+        "facet_return_anchor": restored.get("return_anchor") if restored else None,
+        "checkpoint_digest": accepted.get("digest") if accepted else None,
+        "rehydration": ("READBACK_PENDING" if not bound or value in HOLDS else
+                        accepted.get("status") if accepted else "NATIVE_SNAPSHOT_PROJECTION_ONLY"),
+        "rehydration_reason": accepted.get("reason") if accepted else "No persisted facet read supplied.",
         "writable": False,
     }
 
@@ -77,8 +87,7 @@ def _next(native: Mapping[str, Any] | None) -> dict:
             "evidence": ["native.status", "native.source_commit"],
             "countercheck": "Quellstand und Prüfergebnis direkt zurücklesen."}
 
-def build_operations_center(native: Mapping[str, Any] | None = None,
-                            *, registry: Mapping[str, str] | None = None) -> dict:
+def build_operations_center(native: Mapping[str, Any] | None = None,\n                            *, registry: Mapping[str, str] | None = None,\n                            facet_records: Mapping[str, dict] | None = None) -> dict:
     """Construct advisory view from a *caller-verified* native snapshot."""
     bound = _bound(native)
     value = _status(native) if bound else "OFFEN"
@@ -88,7 +97,7 @@ def build_operations_center(native: Mapping[str, Any] | None = None,
         "project_id": native["project_id"] if bound else None, "status": value,
         "source": _proof(verified),
         "projects": sorted(registry) if isinstance(registry, Mapping) else [],
-        "facets": [facet_projection(item[0], verified) for item in FACETS],
+        "facets": [facet_projection(item[0], verified, (facet_records or {}).get(item[0])) for item in FACETS],
         "navigation": [{"id": fid, "title": title, "description": detail}
                        for fid, title, detail in FACETS],
         "visual_daemon": {
