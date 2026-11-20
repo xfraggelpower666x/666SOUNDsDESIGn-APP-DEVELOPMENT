@@ -59,6 +59,7 @@ def facet_projection(facet_id: str, native: Mapping[str, Any] | None,\n         
         "work_state": restored.get("state") if restored else None,
         "facet_return_anchor": restored.get("return_anchor") if restored else None,
         "checkpoint_digest": accepted.get("digest") if accepted else None,
+        "step_evidence_status": "OFFEN",  # durable record integrity != observed task outcome
         "rehydration": ("READBACK_PENDING" if not bound or value in HOLDS else
                         accepted.get("status") if accepted else "NATIVE_SNAPSHOT_PROJECTION_ONLY"),
         "rehydration_reason": accepted.get("reason") if accepted else "No persisted facet read supplied.",
