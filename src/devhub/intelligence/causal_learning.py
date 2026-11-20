@@ -9,7 +9,6 @@ from collections.abc import Mapping
 
 SCHEMA = '666dev-r03-causal-review/v1'
 ALLOWED = {'RECHECK', 'UNIMPACTED'}
-STATES = {'VORGESCHLAGEN', 'READBACK_PENDING', 'CONFLICT_QUARANTINE'}
 
 
 def plan_revalidation(impact: Mapping, *, project_id: str, revision: str) -> dict:
@@ -41,8 +40,11 @@ def plan_revalidation(impact: Mapping, *, project_id: str, revision: str) -> dic
                       'causal_chains': check['chains'], 'reasons': check['reasons'],
                       'acceptance': 'OFFEN'})
     fallback = impact.get('fallback_reasons')
-    if not isinstance(fallback, list):
-        fallback = ['Native impact fallback metadata missing.']
+    if not isinstance(fallback, list) or any(not isinstance(x, str) for x in fallback):
+        fallback = ['Native impact fallback metadata invalid.']
+    # An empty test inventory cannot establish that changed code is safe.
+    if not plans and impact.get('changed_paths'):
+        fallback = [*fallback, 'Source changes exist but no declared test checks were returned.']
     if fallback:
         for item in plans:
             item['requires_revalidation'] = True
@@ -69,8 +71,12 @@ def review_outcome(candidate: Mapping, *, observed_receipts: list[dict] | None =
     receipts = observed_receipts or []
     if not isinstance(receipts, list) or any(not isinstance(r, Mapping) for r in receipts):
         return {'status': 'CONFLICT_QUARANTINE', 'reason': 'Invalid receipt collection.'}
+    # Require exact facet identity; unscoped or foreign-facet observations
+    # must not contribute to confidence in a different facet.
     matching = [r for r in receipts if r.get('project_id') == candidate['project_id']
-                and r.get('source_revision') == candidate['source_revision']]
+                and r.get('facet_id') == candidate['facet_id']
+                and r.get('source_revision') == candidate['source_revision']
+                and r.get('outcome') in {'supports', 'contradicts'}]
     contradictions = [r for r in matching if r.get('outcome') == 'contradicts']
     state = 'VORGESCHLAGEN' if matching else 'READBACK_PENDING'
     return {'schema': SCHEMA, 'status': state, 'project_id': candidate['project_id'],
