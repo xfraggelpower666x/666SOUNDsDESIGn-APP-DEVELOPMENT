@@ -36,20 +36,40 @@ class CausalLearningR03Tests(unittest.TestCase):
                               project_id=PROJECT, revision=REV)
         self.assertEqual('CONFLICT_QUARANTINE', p['status'])
 
+    def test_empty_check_inventory_with_changed_source_requires_recheck(self):
+        report = plan_revalidation({**IMPACT, 'checks': []}, project_id=PROJECT, revision=REV)
+        self.assertTrue(report['recheck_all'])
+        self.assertIn('no declared test checks', report['fallback_reasons'][-1])
+
+    def test_unscoped_or_wrong_facet_receipts_are_not_validated(self):
+        for evidence in ({'project_id':PROJECT, 'source_revision':REV, 'outcome':'supports'},
+                         {'project_id':PROJECT, 'source_revision':REV,
+                          'facet_id':'repomind', 'outcome':'supports'}):
+            with self.subTest(evidence=evidence):
+                report = review_outcome(CANDIDATE, observed_receipts=[evidence])
+                self.assertEqual('READBACK_PENDING', report['status'])
+                self.assertEqual(0, report['matching_receipts'])
+
+    def test_unknown_outcome_does_not_count(self):
+        evidence = {'project_id':PROJECT, 'facet_id':'codeforge',
+                    'source_revision':REV, 'outcome':'automatically-approved'}
+        self.assertEqual('READBACK_PENDING',
+                         review_outcome(CANDIDATE, observed_receipts=[evidence])['status'])
+
     def test_outcome_no_receipts_pending(self):
         r = review_outcome(CANDIDATE)
         self.assertEqual('READBACK_PENDING', r['status'])
         self.assertEqual('FORBIDDEN', r['promotion'])
 
     def test_outcome_receipt_is_not_independent_proof(self):
-        r = review_outcome(CANDIDATE, observed_receipts=[{'project_id':PROJECT,
+        r = review_outcome(CANDIDATE, observed_receipts=[{'project_id':PROJECT, 'facet_id':'codeforge',
             'source_revision':REV, 'outcome':'supports'}])
         self.assertEqual('VORGESCHLAGEN', r['status'])
         self.assertEqual('OFFEN', r['independent_verification'])
         self.assertFalse(r['writes'])
 
     def test_contradiction_retained(self):
-        r = review_outcome(CANDIDATE, observed_receipts=[{'project_id':PROJECT,
+        r = review_outcome(CANDIDATE, observed_receipts=[{'project_id':PROJECT, 'facet_id':'codeforge',
             'source_revision':REV, 'outcome':'contradicts'}])
         self.assertEqual('REVIEW_REQUIRED', r['contradiction_control'])
         self.assertEqual(1, r['contradictions'])
