@@ -27,6 +27,8 @@ HELP = """666DEV commands (parsed only from this direct invocation):
   666DEV <PROJECT-ID> IMPACT [BASE]
   666DEV <PROJECT-ID> MANIFEST [manifest.json|cards.zip]
   666DEV <PROJECT-ID> PATCH-APPLY <candidate.json>
+  666DEV <PROJECT-ID> FACET-STATUS <facet-id>
+  666DEV <PROJECT-ID> FACET-SAVE <facet-id> <checkpoint-input.json>
 
 Examples:
   python -m devhub.cli 666DEV demo-monorepo SYSTEMSTART
@@ -364,7 +366,7 @@ def execute(tokens: list[str]) -> str:
     if action == "FUCK" and len(normalized) in (4, 5) and normalized[3].upper() == "HORST":
         handoff = _read_handoff(normalized[4]) if len(normalized) == 5 else None
         return json.dumps(diagnose(project_id, handoff), indent=2, ensure_ascii=False)
-    if action not in {"PATCH-APPLY", "MANIFEST", "IMPACT", "NEXT-CHAT"} and len(normalized) != 3:
+    if action not in {"PATCH-APPLY", "MANIFEST", "IMPACT", "NEXT-CHAT", "FACET-STATUS", "FACET-SAVE"} and len(normalized) != 3:
         raise DevhubError(f"{action} takes only a project ID.")
     if action == "STATUS":
         return render_status(project_id)
@@ -374,6 +376,28 @@ def execute(tokens: list[str]) -> str:
                 raise DevhubError("NEXT-CHAT requires one handoff path.")
             return json.dumps(resume(project_id, _read_handoff(normalized[3])), indent=2, ensure_ascii=False)
         return json.dumps(snapshot(project_id), indent=2, ensure_ascii=False)
+    if action in {"FACET-STATUS", "FACET-SAVE"}:
+        from .intelligence.facet_store import read_checkpoint, save_checkpoint
+        if len(normalized) != (4 if action == "FACET-STATUS" else 5):
+            raise DevhubError("FACET-STATUS requires a facet; FACET-SAVE requires facet and JSON input.")
+        facet = normalized[3].lower()
+        native = snapshot(project_id)
+        if action == "FACET-STATUS":
+            return json.dumps(read_checkpoint(project_id, facet, native), indent=2, ensure_ascii=False)
+        # Only direct CLI invocation grants this local facet-write route.
+        source = Path(normalized[4])
+        if not source.is_file() or source.is_symlink() or source.stat().st_size > 8192:
+            raise DevhubError("Facet input must be a regular JSON file <= 8 KB.")
+        try:
+            payload = json.loads(source.read_text(encoding="utf-8-sig"))
+        except (OSError, ValueError) as exc:
+            raise DevhubError("Invalid facet input JSON.") from exc
+        if not isinstance(payload, dict) or set(payload) != {
+                "state", "last_verified_step", "obligations", "evidence_ids",
+                "return_anchor", "expected_digest"}:
+            raise DevhubError("Facet input schema mismatch.")
+        report = save_checkpoint(project_id, facet, native, **payload)
+        return json.dumps(report, indent=2, ensure_ascii=False)
     if action == "IMPACT":
         from .impact import project_impact
 
