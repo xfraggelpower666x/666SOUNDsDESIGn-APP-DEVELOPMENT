@@ -52,6 +52,49 @@ class CodingProfiFacetTests(unittest.TestCase):
         self.assertFalse(report['handoff_accepted'])
         self.assertEqual('CONFLICT_QUARANTINE', report['status'])
 
+    def test_changed_native_pointers_same_revision_quarantined(self):
+        handoff = trigger('NEW-CHAT', NATIVE, project_id=PROJECT)['handoff']
+        for field, value in (
+            ('working', {'checkpoint_id': 'new-working', 'commit': 'b'*40}),
+            ('current', {'checkpoint_id': 'new-current', 'commit': 'b'*40}),
+            ('return_anchor', 'different-line'),
+        ):
+            with self.subTest(field=field):
+                changed = {**NATIVE, field: value}
+                report = trigger('NEXT-CHAT', changed, project_id=PROJECT, handoff=handoff)
+                self.assertEqual('CONFLICT_QUARANTINE', report['status'])
+                self.assertFalse(report.get('handoff_accepted', False))
+
+    def test_partial_facet_handoff_not_adopted(self):
+        saved = {'status': 'PARTIAL', 'checkpoint': None}
+        handoff = trigger('NEW-CHAT', NATIVE, project_id=PROJECT, saved=saved)['handoff']
+        report = trigger('NEXT-CHAT', NATIVE, project_id=PROJECT,
+                         saved=saved, handoff=handoff)
+        self.assertEqual('PARTIAL', report['status'])
+        self.assertFalse(report['handoff_accepted'])
+
+    def test_legacy_handoff_requires_native_revalidation(self):
+        handoff = trigger('NEW-CHAT', NATIVE, project_id=PROJECT)['handoff']
+        handoff.pop('continuity_binding')
+        self.assertEqual('READBACK_PENDING',
+                         trigger('NEXT-CHAT', NATIVE, project_id=PROJECT,
+                                 handoff=handoff)['status'])
+
+    def test_saved_facet_evidence_changes_invalidate_handoff(self):
+        saved = {'status': 'VERIFIZIERT', 'digest':'a'*64,
+                 'checkpoint': {'return_anchor': 'line-a',
+                                'last_verified_step': 'step-1',
+                                'obligations': ['finish-tests'],
+                                'evidence_ids': ['receipt-a']}}
+        handoff = trigger('NEW-CHAT', NATIVE, project_id=PROJECT, saved=saved)['handoff']
+        report = trigger('NEXT-CHAT', NATIVE, project_id=PROJECT, saved=saved, handoff=handoff)
+        self.assertTrue(report['handoff_accepted'])
+        self.assertTrue(report['task_resumed'])
+        changed = {**saved, 'digest':'b'*64}
+        report = trigger('NEXT-CHAT', NATIVE, project_id=PROJECT,
+                         saved=changed, handoff=handoff)
+        self.assertEqual('CONFLICT_QUARANTINE', report['status'])
+
     def test_invalid_trigger_rejected(self):
         with self.assertRaises(ValueError):trigger('UPDATE',NATIVE,project_id=PROJECT)
     def test_missing_native_source_pending(self):
