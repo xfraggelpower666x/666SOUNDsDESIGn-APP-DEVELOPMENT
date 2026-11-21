@@ -32,6 +32,26 @@ class CodingProfiFacetTests(unittest.TestCase):
         report=trigger('WEITER', NATIVE,project_id=PROJECT)
         self.assertFalse(report['executes_next_action'])
         self.assertIn('CAUSAL',report['next_action'])
+    def test_corrupt_facet_checkpoint_stays_quarantined(self):
+        saved = {'status': 'CONFLICT_QUARANTINE', 'checkpoint': None}
+        report = trigger('SYSTEMSTART', NATIVE, project_id=PROJECT, saved=saved)
+        self.assertEqual('CONFLICT_QUARANTINE', report['status'])
+        self.assertEqual('CONFLICT_QUARANTINE', report['facet_checkpoint_status'])
+
+    def test_stale_facet_checkpoint_remains_partial(self):
+        saved = {'status': 'PARTIAL', 'checkpoint': None}
+        report = trigger('STATUS', NATIVE, project_id=PROJECT, saved=saved)
+        self.assertEqual('PARTIAL', report['status'])
+        self.assertEqual('PARTIAL', report['facet_checkpoint_status'])
+
+    def test_conflicted_facet_refuses_handoff_adoption(self):
+        saved = {'status': 'CONFLICT_QUARANTINE', 'checkpoint': None}
+        handoff = trigger('NEW-CHAT', NATIVE, project_id=PROJECT)['handoff']
+        report = trigger('NEXT-CHAT', NATIVE, project_id=PROJECT,
+                         saved=saved, handoff=handoff)
+        self.assertFalse(report['handoff_accepted'])
+        self.assertEqual('CONFLICT_QUARANTINE', report['status'])
+
     def test_invalid_trigger_rejected(self):
         with self.assertRaises(ValueError):trigger('UPDATE',NATIVE,project_id=PROJECT)
     def test_missing_native_source_pending(self):
