@@ -26,6 +26,8 @@ HELP = """666DEV commands (parsed only from this direct invocation):
   666DEV <PROJECT-ID> NEXT-CHAT <handoff.json>
   666DEV <PROJECT-ID> IMPACT [BASE]
   666DEV <PROJECT-ID> CAUSAL [BASE] (read-only R03 plan)
+  666DEV <PROJECT-ID> CODING-PROFI SYSTEMSTART|STATUS|LIVECIRCLE|WEITER|NEW-CHAT
+  666DEV <PROJECT-ID> CODING-PROFI NEXT-CHAT <handoff.json> (read-only)
   666DEV <PROJECT-ID> MANIFEST [manifest.json|cards.zip]
   666DEV <PROJECT-ID> PATCH-APPLY <candidate.json>
   666DEV <PROJECT-ID> FACET-STATUS <facet-id>
@@ -367,7 +369,7 @@ def execute(tokens: list[str]) -> str:
     if action == "FUCK" and len(normalized) in (4, 5) and normalized[3].upper() == "HORST":
         handoff = _read_handoff(normalized[4]) if len(normalized) == 5 else None
         return json.dumps(diagnose(project_id, handoff), indent=2, ensure_ascii=False)
-    if action not in {"PATCH-APPLY", "MANIFEST", "IMPACT", "CAUSAL", "NEXT-CHAT", "FACET-STATUS", "FACET-SAVE"} and len(normalized) != 3:
+    if action not in {"PATCH-APPLY", "MANIFEST", "IMPACT", "CAUSAL", "NEXT-CHAT", "FACET-STATUS", "FACET-SAVE", "CODING-PROFI"} and len(normalized) != 3:
         raise DevhubError(f"{action} takes only a project ID.")
     if action == "STATUS":
         return render_status(project_id)
@@ -399,6 +401,19 @@ def execute(tokens: list[str]) -> str:
             raise DevhubError("Facet input schema mismatch.")
         report = save_checkpoint(project_id, facet, native, **payload)
         return json.dumps(report, indent=2, ensure_ascii=False)
+    if action == "CODING-PROFI":
+        from .intelligence.coding_profi import trigger, ACTIONS
+        from .intelligence.facet_store import read_checkpoint
+        if len(normalized) not in (4, 5):
+            raise DevhubError("CODING-PROFI expects a native facet action and optional handoff.")
+        verb = normalized[3]
+        if verb not in ACTIONS or (verb == "NEXT-CHAT") != (len(normalized) == 5):
+            raise DevhubError("Invalid CODING-PROFI facet action or handoff arguments.")
+        native = snapshot(project_id)
+        saved = read_checkpoint(project_id, "coding-profi", native)
+        handoff = _read_handoff(normalized[4]) if verb == "NEXT-CHAT" else None
+        return json.dumps(trigger(verb, native, project_id=project_id,
+                                  saved=saved, handoff=handoff), indent=2, ensure_ascii=False)
     if action == "CAUSAL":
         from .impact import project_impact
         from .intelligence.causal_learning import plan_revalidation
