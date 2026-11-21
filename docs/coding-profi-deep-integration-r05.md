@@ -30,3 +30,11 @@ Retained specialist families include: NLP/semantics, causal/evidence/relational/
 ## Native boundaries / release requirements
 
 Native 666DEV GitHub + selected project profile and native LiveCircle remain sole authority. The R03 causal planner is read-only; candidate learning is not a verified, persistent learned rule. External plugin publication != native CI != Windows host acceptance. Production release requires prechange backup, source and tests, GitHub CI, direct readback and pointer-last; remote plugin release requires its own provider readback. No production Project Current was inferred or written. This document is evidence, not a new trigger or execution permission.
+
+## Verified plugin release handoff (post native-audit preparation)
+
+- Published provider plugin: `666dev-coding-control` version `0.2.2`, release `pluginrel_6b021baec9b08191be25154709e08cd6`.
+- Direct provider readback: 139 skills, 318 files, both manifests at 0.2.2, 43 existing keywords retained; the native LiveCircle remains present.
+- The source-derived `.NET` TRX script, five test cases, Windows STARTEN reference, and a scoped R05 expert skill have read back as present.
+- Local TRX regression: five of five tests passed; native R05 focused tests: 15 of 15 passed.
+- Provider release is not proof of user-facing ChatGPT host execution. Native GitHub CI and branch readback must be checked independently at the final published commit.
