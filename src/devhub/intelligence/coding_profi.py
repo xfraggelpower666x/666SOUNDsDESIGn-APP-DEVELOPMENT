@@ -29,7 +29,16 @@ def trigger(action: str, native: Mapping | None, *, project_id: str,
         status = "READBACK_PENDING"
     if not valid or status in BLOCKS:
         status = "READBACK_PENDING" if not valid else status
-    record = saved if isinstance(saved, Mapping) and saved.get("status") == "VERIFIZIERT" else None
+    # Preserve the readback status even when no checkpoint can be trusted.
+    # A corrupt or stale facet record must not silently become "OFFEN".
+    saved_status = saved.get("status") if isinstance(saved, Mapping) else "OFFEN"
+    if saved_status not in ("OFFEN", "VERIFIZIERT", "PARTIAL", *BLOCKS):
+        saved_status = "READBACK_PENDING"
+    if saved_status in BLOCKS and status not in BLOCKS:
+        status = saved_status
+    elif saved_status == "PARTIAL" and status not in BLOCKS:
+        status = "PARTIAL"
+    record = saved if isinstance(saved, Mapping) and saved_status == "VERIFIZIERT" else None
     checkpoint = record.get("checkpoint") if record else None
     if not isinstance(checkpoint, Mapping):
         checkpoint = None
@@ -41,7 +50,7 @@ def trigger(action: str, native: Mapping | None, *, project_id: str,
             "facet_return_anchor": checkpoint.get("return_anchor") if checkpoint else None,
             "obligations": list(checkpoint.get("obligations", [])) if checkpoint else [],
             "last_verified_step": checkpoint.get("last_verified_step") if checkpoint else None,
-            "facet_checkpoint_status": record.get("status") if record else "OFFEN",
+            "facet_checkpoint_status": saved_status,
             "writable": False, "requires_native_readback": True,
             "provider_host_acceptance": "OFFEN", "can_autoactivate_lyvra": False}
     if action == "NEXT-CHAT":
