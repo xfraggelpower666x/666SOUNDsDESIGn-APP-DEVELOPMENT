@@ -16,7 +16,7 @@ from .. import core
 SCHEMA = "666dev-facet-checkpoint/v1"
 SHA = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}", re.ASCII)
 ID = re.compile(r"[a-z0-9][a-z0-9-]{0,62}", re.ASCII)
-FACET_IDS = frozenset(("overview", "codeforge", "repomind", "continuity", "visual", "desktop"))
+FACET_IDS = frozenset(("overview", "codeforge", "repomind", "continuity", "visual", "desktop", "coding-profi"))
 ALLOWED_STATES = frozenset(("READY", "ACTIVE", "WAITING", "PAUSED", "COMPLETED"))
 BLOCKS = frozenset(("READBACK_PENDING", "CONFLICT_QUARANTINE", "WRITE_BLOCKED", "BLOCKIERT"))
 MAX_BYTES = 16384
