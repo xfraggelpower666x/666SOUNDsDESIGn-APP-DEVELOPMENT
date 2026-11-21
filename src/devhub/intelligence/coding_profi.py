@@ -42,6 +42,22 @@ def trigger(action: str, native: Mapping | None, *, project_id: str,
     checkpoint = record.get("checkpoint") if record else None
     if not isinstance(checkpoint, Mapping):
         checkpoint = None
+    # A Git source SHA alone cannot prove same-job continuity. Native Working,
+    # Current and the live return anchor can evolve at an unchanged commit.
+    # Scoped facet evidence is bound by the already-verified digest only.
+    continuity = {
+        "working": native.get("working") if valid else None,
+        "current": native.get("current") if valid else None,
+        "native_return_anchor": native.get("return_anchor") if valid else None,
+        "facet_checkpoint_status": saved_status,
+        "facet_checkpoint_digest": saved.get("digest") if record else None,
+    }
+    work_context = {
+        "facet_return_anchor": checkpoint.get("return_anchor") if checkpoint else None,
+        "last_verified_step": checkpoint.get("last_verified_step") if checkpoint else None,
+        "obligations": list(checkpoint.get("obligations", [])) if checkpoint else [],
+        "evidence_ids": list(checkpoint.get("evidence_ids", [])) if checkpoint else [],
+    }
     base = {"schema": SCHEMA, "authority": "666DEV", "facet_id": "coding-profi",
             "action": action, "project_id": project_id, "status": status, "source": source,
             "working": native.get("working") if valid else None,
@@ -51,24 +67,40 @@ def trigger(action: str, native: Mapping | None, *, project_id: str,
             "obligations": list(checkpoint.get("obligations", [])) if checkpoint else [],
             "last_verified_step": checkpoint.get("last_verified_step") if checkpoint else None,
             "facet_checkpoint_status": saved_status,
+            "facet_checkpoint_digest": continuity["facet_checkpoint_digest"],
+            "evidence_ids": work_context["evidence_ids"],
+            "continuity_binding": continuity,
             "writable": False, "requires_native_readback": True,
             "provider_host_acceptance": "OFFEN", "can_autoactivate_lyvra": False}
     if action == "NEXT-CHAT":
+        if (isinstance(handoff, Mapping) and handoff.get("kind") == KIND
+                and "continuity_binding" not in handoff):
+            return {**base, "status": "READBACK_PENDING",
+                    "handoff_accepted": False,
+                    "reason": "Legacy handoff has no Working/Current/return-anchor binding; revalidate native continuity."}
         if not isinstance(handoff, Mapping) or any((
             handoff.get("kind") != KIND,
             handoff.get("authority") != "666DEV",
             handoff.get("facet_id") != "coding-profi",
             handoff.get("project_id") != project_id,
             handoff.get("source") != source,
+            handoff.get("continuity_binding") != continuity,
+            handoff.get("work_context") != work_context,
         )):
             return {**base, "status": "CONFLICT_QUARANTINE",
+                    "handoff_accepted": False, "task_resumed": False,
                     "reason": "Untrusted, foreign or stale handoff; no rehydration promotion."}
-        return {**base, "status": status, "handoff_accepted": status not in BLOCKS,
-                "reason": "Handoff identity and revision matched; current native evidence wins."}
+        accepted = status not in BLOCKS and status != "PARTIAL"
+        return {**base, "status": status, "handoff_accepted": accepted,
+                "task_resumed": bool(accepted and record and checkpoint),
+                "reason": ("Verified native continuity and scoped work evidence match."
+                           if accepted else "Native project or facet evidence needs revalidation; handoff not adopted.")}
     if action == "NEW-CHAT":
         return {**base, "handoff": {"kind": KIND, "authority": "666DEV",
                 "facet_id": "coding-profi", "project_id": project_id,
-                "source": source, "next_action": "666DEV " + project_id + " CODING-PROFI WEITER"},
+                "source": source, "continuity_binding": continuity,
+                "work_context": work_context,
+                "next_action": "666DEV " + project_id + " CODING-PROFI WEITER"},
                 "reason": "Handoff is a proposal; recheck native source on next chat."}
     if action == "WEITER":
         return {**base, "next_action": ("666DEV " + project_id + " LIVECIRCLE") if status in BLOCKS
