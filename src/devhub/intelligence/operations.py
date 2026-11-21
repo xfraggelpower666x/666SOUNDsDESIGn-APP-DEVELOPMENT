@@ -16,6 +16,7 @@ FACETS = (
     ("continuity", "LiveCircle", "Working, Current and return anchors"),
     ("visual", "Visual Intelligence", "Views, charts and evidence-bound menus"),
     ("desktop", "Windows Control", "Desktop and host-acceptance checks"),
+    ("coding-profi", "Coding Profi Intelligence", "Read-only adaptive coding intelligence with facet continuity"),
 )
 STATUSES = {"VERIFIZIERT", "ABGELEITET", "VORGESCHLAGEN", "OFFEN",
             "BLOCKIERT", "PARTIAL", "WRITE_BLOCKED", "READBACK_PENDING",
