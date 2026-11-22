@@ -38,7 +38,9 @@ def policy_snapshot() -> dict:
 
 def evaluate(event: str, cost_class: str = "UNKNOWN", *,
              evidence: Mapping | None = None,
-             approval: Mapping | None = None) -> dict:
+             approval: Mapping | None = None,
+             action_id: str | None = None,
+             estimated_cost_eur: int | float | None = None) -> dict:
     """Fail closed unless zero cost is evidenced or consent is action-scoped.
 
     Approval is accepted only as an explicit, fresh, non-portable argument from
@@ -55,15 +57,18 @@ def evaluate(event: str, cost_class: str = "UNKNOWN", *,
                      and isinstance(reference.get("source"), str)
                      and bool(reference.get("source").strip()))
     consent = approval if isinstance(approval, Mapping) else {}
-    # Explicit approval must name this exact event, an action identifier, and
-    # an exact numeric monetary cap; booleans are not numbers.
+    # Match trusted caller action ID and bounded charge, never only approval claims.
+    numeric_cost = (type(estimated_cost_eur) in (int, float)
+                    and 0 <= estimated_cost_eur < float("inf"))
     limit = consent.get("max_eur")
     permitted = (consent.get("explicit") is True
                  and consent.get("event") == event
-                 and isinstance(consent.get("action_id"), str)
-                 and bool(consent["action_id"].strip())
+                 and isinstance(action_id, str) and bool(action_id.strip())
+                 and consent.get("action_id") == action_id
+                 and numeric_cost
                  and type(limit) in (int, float)
                  and 0 <= limit < float("inf")
+                 and estimated_cost_eur <= limit
                  and consent.get("allow_auto_top_up") is not True)
     # Unknown costs cannot be bounded reliably, even with a nominal approval.
     authorized = verified_free or (permitted and cost_class in {"PAID", "USES_PAID_CREDITS"})
@@ -82,6 +87,7 @@ def evaluate(event: str, cost_class: str = "UNKNOWN", *,
         "needs_explicit_approval": not verified_free,
         "evidence_source": reference.get("source") if verified_free else None,
         "approval_limit_eur": limit if authorized and not verified_free else None,
+        "bounded_estimated_cost_eur": estimated_cost_eur if authorized and not verified_free else None,
     }
 
 
