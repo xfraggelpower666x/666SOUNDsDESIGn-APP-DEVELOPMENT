@@ -52,8 +52,7 @@ class CostConsentGuardTests(unittest.TestCase):
                                   action_id="provider-123", estimated_cost_eur=1.0)["allowed"])
         self.assertFalse(evaluate("API_CALL", "PAID", approval=approval,
                                   action_id="other-provider", estimated_cost_eur=1.0)["allowed"])
-        self.assertFalse(evaluate("API_CALL", "PAID", approval=approval,
-                                          action_id="provider-123", estimated_cost_eur=1)["allowed"])
+        self.assertFalse(evaluate("API_CALL", "PAID", approval=approval)["allowed"])
         self.assertFalse(evaluate("API_CALL", "PAID", approval=approval,
                                   action_id="provider-123", estimated_cost_eur=2.0)["allowed"])
         self.assertFalse(evaluate("API_CALL", "PAID", approval=approval,
@@ -64,7 +63,8 @@ class CostConsentGuardTests(unittest.TestCase):
             with self.subTest(limit=limit):
                 approval = {"explicit": True, "event": "API_CALL",
                             "action_id": "provider-123", "max_eur": limit}
-                self.assertFalse(evaluate("API_CALL", "PAID", approval=approval)["allowed"])
+                self.assertFalse(evaluate("API_CALL", "PAID", approval=approval,
+                                          action_id="provider-123", estimated_cost_eur=1)["allowed"])
 
     def test_no_persisted_approval_in_snapshot_or_event(self):
         text = str(policy_snapshot()) + str(event_notice("NEXT-CHAT"))
