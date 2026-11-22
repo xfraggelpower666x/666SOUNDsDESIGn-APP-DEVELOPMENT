@@ -46,8 +46,18 @@ class CostConsentGuardTests(unittest.TestCase):
     def test_approval_must_match_event_and_action(self):
         approval = {"explicit": True, "event": "API_CALL",
                     "action_id": "provider-123", "max_eur": 1.5}
-        self.assertTrue(evaluate("API_CALL", "PAID", approval=approval)["allowed"])
-        self.assertFalse(evaluate("PLUGIN_CALL", "PAID", approval=approval)["allowed"])
+        self.assertTrue(evaluate("API_CALL", "PAID", approval=approval,
+                                 action_id="provider-123", estimated_cost_eur=1.0)["allowed"])
+        self.assertFalse(evaluate("PLUGIN_CALL", "PAID", approval=approval,
+                                  action_id="provider-123", estimated_cost_eur=1.0)["allowed"])
+        self.assertFalse(evaluate("API_CALL", "PAID", approval=approval,
+                                  action_id="other-provider", estimated_cost_eur=1.0)["allowed"])
+        self.assertFalse(evaluate("API_CALL", "PAID", approval=approval,
+                                          action_id="provider-123", estimated_cost_eur=1)["allowed"])
+        self.assertFalse(evaluate("API_CALL", "PAID", approval=approval,
+                                  action_id="provider-123", estimated_cost_eur=2.0)["allowed"])
+        self.assertFalse(evaluate("API_CALL", "PAID", approval=approval,
+                                  action_id="provider-123", estimated_cost_eur=None)["allowed"])
 
     def test_bad_approvals_fail_closed(self):
         for limit in (None, -1, True, "1", float("inf")):
