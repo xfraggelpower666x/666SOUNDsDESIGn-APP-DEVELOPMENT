@@ -7,6 +7,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from .cost_guard import event_notice
+
 SCHEMA = "666dev-operations-center/v1"
 FACET_SCHEMA = "666dev-facet-livecircle/v1"
 FACETS = (
@@ -105,6 +107,7 @@ def build_operations_center(native: Mapping[str, Any] | None = None,
         "facets": [facet_projection(item[0], verified, (facet_records or {}).get(item[0])) for item in FACETS],
         "navigation": [{"id": fid, "title": title, "description": detail}
                        for fid, title, detail in FACETS],
+        "cost_consent": event_notice("REHYDRATE"),
         "visual_daemon": {
             "state": "HOLD" if value in HOLDS else "ADVISORY",
             "observed_status": value,
