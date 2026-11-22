@@ -41,7 +41,15 @@ def dump(data):
     return (json.dumps(data, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
 
 
-def build(source: Path, destination: Path):
+def build(source: Path, destination: Path, *, allow_legacy_v015: bool = False):
+    # This historical builder targets plugin v0.1.5, NOT provider-current v0.2.2.
+    # Never silently overwrite or re-publish modern private plugin content.
+    if allow_legacy_v015 is not True:
+        raise RuntimeError("WRITE_BLOCKED: legacy plugin builder v0.1.5 is not the current v0.2.2 release.")
+    isolated = (ROOT / ".work" / "legacy-plugin-builds").resolve()
+    if not destination.resolve().is_relative_to(isolated):
+        raise ValueError("WRITE_BLOCKED: legacy output must remain in .work/legacy-plugin-builds.")
+    isolated.mkdir(parents=True, exist_ok=True)
     raw = source.read_bytes()
     if hashlib.sha256(raw).hexdigest() != SOURCE_SHA256:
         raise ValueError("Expected the reviewed Coding Profi 0.75.0 source archive.")
@@ -99,5 +107,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("source", type=Path)
     parser.add_argument("destination", type=Path)
+    parser.add_argument("--allow-legacy-v015", action="store_true",
+                        help="Explicit historical local build only; never a v0.2.2 plugin release.")
     args = parser.parse_args()
-    build(args.source, args.destination)
+    build(args.source, args.destination, allow_legacy_v015=args.allow_legacy_v015)
