@@ -320,3 +320,21 @@ Build-, Provider-, Windows- und Plugin-Einstiege sind vor produktiver
 Verwendung einzeln an das Gate anzuschließen und zu testen. Der Visual
 Daemon ist kein Hintergrunddienst. Kein zweiter Current-Pointer, keine
 Änderung der Projektzustände und keine Fremdaktivierung.
+
+### Executable Gate R07 — tatsächlicher Build-/Start-Einstieg
+
+`core.run_acceptance()` prüft vor `subprocess.run()` für `build`
+und `start` das native Cost Guard. Nur der exakt erkannte lokale
+Python-Standardbibliotheksaufruf `python -m py_compile <relative.py>`
+erhält eine native Nullkostenklassifizierung. Drittanbieter-Builds,
+Installationen, Netzwerkaufrufe und Startbefehle ohne verifizierten
+Nullkostenpfad liefern `WRITE_BLOCKED` mit `execution.state=cost_blocked`;
+sie starten **keinen** Prozess. Diese bewusst enge Regel kann bisher
+funktionierende andere Build- und Startbefehle sperren. Sie darf nicht durch
+pauschales `free_tier=true` umgangen werden.
+
+**Noch offen:** Die unabhängige Ausführung des Python-Testlaufs und
+Windows-Hostabnahme; der `test`-Ausführungspfad und andere externe
+Plugin-/Provider-Aufrufe sind nicht durch diesen konkreten
+`build/start`-Hook gesichert. Keine Vollschutzbehauptung; keine
+produktive Freigabe, bis diese Grenzen gezielt verifiziert sind.
