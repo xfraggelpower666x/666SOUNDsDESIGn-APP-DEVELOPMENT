@@ -1,0 +1,124 @@
+"""Native 666DEV zero-additional-cost consent guard.
+
+Policy is immutable and versioned in source. No host may treat a handoff,
+stored approval, wallet balance, free-tier label, or subscription as consent.
+"""
+from __future__ import annotations
+
+from collections.abc import Mapping
+
+POLICY_ID = "666DEV-COST-CONSENT-GUARD"
+VERSION = 1
+EVENTS = frozenset({
+    "SYSTEMSTART", "REHYDRATE", "WEITER", "NEW-CHAT", "NEXT-CHAT",
+    "UPDATE", "PLUGIN_CALL", "API_CALL", "CLOUDFLARE_CHANGE",
+    "DEPLOY", "BUILD", "CI", "AUTOMATION", "EXTERNAL_ACTION",
+})
+COST_CLASSES = frozenset({"VERIFIED_FREE", "PAID", "UNKNOWN", "USES_PAID_CREDITS"})
+BLOCK = "WRITE_BLOCKED"
+
+
+def policy_snapshot() -> dict:
+    """Portable public policy only: never includes credentials or approvals."""
+    return {
+        "policy_id": POLICY_ID,
+        "schema_version": VERSION,
+        "authority": "666DEV",
+        "default_budget_eur": 0,
+        "explicit_approval_required": True,
+        "existing_paid_credits_require_approval": True,
+        "auto_top_up": False,
+        "unknown_cost_action": BLOCK,
+        "approval_reuse": False,
+        "approvals_are_portable": False,
+        "free_tier_requires_verified_zero_cost": True,
+        "status": "ENFORCED_BY_NATIVE_GUARD_AT_CHECKED_ENTRYPOINTS",
+    }
+
+
+def evaluate(event: str, cost_class: str = "UNKNOWN", *,
+             evidence: Mapping | None = None,
+             approval: Mapping | None = None,
+             action_id: str | None = None,
+             estimated_cost_eur: int | float | None = None) -> dict:
+    """Fail closed unless zero cost is evidenced or consent is action-scoped.
+
+    Approval is accepted only as an explicit, fresh, non-portable argument from
+    an authorized host. No approval is saved to a handoff or read from history.
+    An approval cannot authorize an unknown monetary limit or automatic top-up.
+    """
+    event = event.upper() if isinstance(event, str) else ""
+    cost_class = cost_class.upper() if isinstance(cost_class, str) else ""
+    if event not in EVENTS or cost_class not in COST_CLASSES:
+        raise ValueError("Unknown cost guard event or cost class")
+    reference = evidence if isinstance(evidence, Mapping) else {}
+    verified_free = (cost_class == "VERIFIED_FREE"
+                     and reference.get("verified_zero_cost") is True
+                     and isinstance(reference.get("source"), str)
+                     and bool(reference.get("source").strip()))
+    consent = approval if isinstance(approval, Mapping) else {}
+    # Match trusted caller action ID and bounded charge, never only approval claims.
+    numeric_cost = (type(estimated_cost_eur) in (int, float)
+                    and 0 <= estimated_cost_eur < float("inf"))
+    limit = consent.get("max_eur")
+    permitted = (consent.get("explicit") is True
+                 and consent.get("event") == event
+                 and isinstance(action_id, str) and bool(action_id.strip())
+                 and consent.get("action_id") == action_id
+                 and numeric_cost
+                 and type(limit) in (int, float)
+                 and 0 <= limit < float("inf")
+                 and estimated_cost_eur <= limit
+                 and consent.get("allow_auto_top_up") is not True)
+    # Unknown costs cannot be bounded reliably, even with a nominal approval.
+    authorized = verified_free or (permitted and cost_class in {"PAID", "USES_PAID_CREDITS"})
+    return {
+        "policy_id": POLICY_ID,
+        "schema_version": VERSION,
+        "event": event,
+        "cost_class": cost_class,
+        "status": "VERIFIZIERT" if verified_free else ("APPROVAL_SCOPED" if authorized else BLOCK),
+        "allowed": bool(authorized),
+        "reason": ("Verifizierte kostenlose Ausführung."
+                   if verified_free else
+                   ("Explizite, auf diesen Vorgang begrenzte Freigabe."
+                    if authorized else
+                    "Kein nachgewiesener Nullkostenpfad oder gültige ausdrückliche Freigabe.")),
+        "needs_explicit_approval": not verified_free,
+        "evidence_source": reference.get("source") if verified_free else None,
+        "approval_limit_eur": limit if authorized and not verified_free else None,
+        "bounded_estimated_cost_eur": estimated_cost_eur if authorized and not verified_free else None,
+    }
+
+
+def event_notice(event: str) -> dict:
+    """Cost policy rehydration notice; does not execute external services."""
+    return {
+        "event": event,
+        "policy": policy_snapshot(),
+        "guard": evaluate(event),
+        "next_step": "Kostenklasse und nachweisbare Nullkostenquelle vor externem Aufruf prüfen.",
+    }
+
+def local_command_cost_evidence(event: str, command: list[str] | tuple[str, ...]) -> dict:
+    """Only a narrowly audited stdlib syntax compile qualifies as zero-cost.
+
+    User-controlled tests, shell commands, npm, installers, deployers and other
+    subprocesses are UNKNOWN by default. This does not inspect code or execute it.
+    """
+    from pathlib import PurePosixPath, PureWindowsPath
+
+    parts = list(command) if isinstance(command, (list, tuple)) else []
+    if (event == "BUILD" and len(parts) == 4
+            and parts[0] in {"python", "python3", "python.exe"}
+            and parts[1:3] == ["-m", "py_compile"]
+            and isinstance(parts[3], str)
+            and parts[3].endswith(".py")):
+        target = parts[3]
+        posix, windows = PurePosixPath(target), PureWindowsPath(target)
+        if (not posix.is_absolute() and not windows.is_absolute()
+                and not windows.drive and ".." not in posix.parts
+                and "\\\\" not in target and posix.parts):
+            return {"verified_zero_cost": True,
+                    "source": "native-static-allowlist: local Python stdlib py_compile"}
+    return {}

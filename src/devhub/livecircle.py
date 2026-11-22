@@ -7,6 +7,7 @@ from . import core
 from .desktop_impact import desktop_impact
 from .impact import project_impact
 from .recovery import assess_recovery, profile_fingerprint, summarize_acceptance
+from .intelligence.cost_guard import event_notice, policy_snapshot
 
 KIND = "666dev-livecircle"
 VERSION = 1
@@ -32,6 +33,7 @@ def snapshot(project_id: str, *, desktop_base: str | None = None) -> dict:
         "next_action": None,
         "status": "READBACK_PENDING",
     }
+    record["cost_consent"] = event_notice("SYSTEMSTART")
     record["desktop_impact"] = desktop_impact(core.ROOT, record["hub_commit"], desktop_base)
     try:
         state = core.rehydrate(project_id, initialize_demo=False)

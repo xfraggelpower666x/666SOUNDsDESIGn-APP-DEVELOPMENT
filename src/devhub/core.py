@@ -445,6 +445,25 @@ def run_acceptance(profile: dict[str, Any], source: Path, revision: str, *,
             receipt["clean_revision"] = clean_before
             evidence[-1]["execution"] = receipt
             continue
+        # Native cost gate belongs at the actual subprocess boundary.
+        # Build/start operations with unproved cost are never launched.
+        if kind in {"build", "start"}:
+            from .intelligence.cost_guard import evaluate, local_command_cost_evidence
+            cost_event = "BUILD" if kind == "build" else "EXTERNAL_ACTION"
+            proof = local_command_cost_evidence(cost_event, command)
+            decision = evaluate(cost_event,
+                                "VERIFIED_FREE" if proof else "UNKNOWN",
+                                evidence=proof)
+            if not decision["allowed"]:
+                blocked = make_evidence(kind, display, revision,
+                                        f"{sys.platform}; Python {sys.version.split()[0]}",
+                                        "WRITE_BLOCKED: native cost guard denies unverified command.",
+                                        "WRITE_BLOCKED")
+                receipt.update(state="cost_blocked", clean_revision=clean_before,
+                               cost_guard=decision)
+                blocked["execution"] = receipt
+                evidence.append(blocked)
+                continue
         if command and Path(command[0]).name.lower() in {"python", "python3", "python.exe"}:
             command[0] = sys.executable
         try:

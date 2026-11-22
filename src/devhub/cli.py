@@ -18,6 +18,7 @@ HELP = """666DEV commands (parsed only from this direct invocation):
   666DEV STATUS
   666DEV SYSTEMSTART | UPDATE | FUCK HORST
   666DEV DESKTOP-IMPACT [BASE]
+  666DEV COST-POLICY | COST-CHECK <EVENT> <COST-CLASS> (read-only)
   666DEV REPO-MIND CHECK [RENAME-BASE] | INDEX | PR <RENAME-BASE> <TARGET-BRANCH>
   666DEV <PROJECT-ID> FUCK HORST [handoff.json]
   666DEV <PROJECT-ID> SYSTEMSTART|STATUS|WEITER|CODEFORGE|SUPERCODEFORGE|VISUAL|UPDATE|FREEZE
@@ -328,6 +329,19 @@ def execute(tokens: list[str]) -> str:
         raise DevhubError("A namespace-qualified 666DEV command is required. Try 666DEV HELP.")
     if len(normalized) == 1 or normalized[1] == "HELP":
         return HELP
+    if normalized[1] in {"COST-POLICY", "COST-CHECK"}:
+        from .intelligence.cost_guard import evaluate, policy_snapshot
+        if normalized[1] == "COST-POLICY":
+            if len(normalized) != 2:
+                raise DevhubError("COST-POLICY takes no arguments.")
+            return json.dumps(policy_snapshot(), indent=2, ensure_ascii=False)
+        if len(normalized) != 4:
+            raise DevhubError("COST-CHECK needs an event and cost class.")
+        try:
+            return json.dumps(evaluate(normalized[2], normalized[3]),
+                              indent=2, ensure_ascii=False)
+        except ValueError as exc:
+            raise DevhubError(str(exc)) from exc
     if normalized[1] == "DESKTOP-IMPACT":
         from .desktop_impact import desktop_impact
 

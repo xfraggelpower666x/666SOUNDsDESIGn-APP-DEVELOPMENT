@@ -279,3 +279,62 @@ Nächste Ausbaustufen: gesicherte Sub-LiveCircle-Working-Ledger,
 kausale Testinvalidierung, revisionsgebundenes Outcome-Learning, native
 Windows-Hostabnahme und Plugin-Hostparität. Diese Funktionen werden durch
 das vorliegende R01-Modul **nicht** als fertig behauptet.
+
+## R06+ Cost & Consent Guard — globale Nullkostenregel
+
+Der native Guard liegt in `src/devhub/intelligence/cost_guard.py`. Standard ist
+**0 EUR zusätzliche Kosten**. Keine Plugin-, API-, TinyFish-, Cloudflare-,
+GitHub-, Hosting-, Build- oder Automationskosten ohne vorherige ausdrückliche,
+auf die konkrete Aktion und ihr Limit begrenzte Freigabe. Wallet-Guthaben ist
+nicht kostenlos; unbekannte Preise bleiben `WRITE_BLOCKED`.
+
+Die folgenden Ereignisse besitzen einen expliziten Prüfvertrag:
+`SYSTEMSTART`, `REHYDRATE`, `WEITER`, `NEW-CHAT`, `NEXT-CHAT`,
+`UPDATE`, `PLUGIN_CALL`, `API_CALL`, `CLOUDFLARE_CHANGE`,
+`DEPLOY`, `BUILD`, `CI`, `AUTOMATION`, `EXTERNAL_ACTION`.
+
+Ein freier Tarif genügt nicht als Beleg. Die aufrufende vertrauenswürdige
+Hostintegration muss den **konkreten Nullkostenpfad** und seine Quelle
+nachweisen. Eine Kostenfreigabe ist niemals Handoff- oder Chat-Kontext,
+niemals automatisch wiederverwendbar und niemals über einen anderen
+Aufruf übertragbar. Unbekannte Kosten sind auch mit pauschaler Freigabe
+gesperrt, weil die Obergrenze nicht überprüft werden kann.
+
+`666DEV COST-POLICY` zeigt die native Regel. `666DEV COST-CHECK <EVENT>
+<COST-CLASS>` liefert eine **konservative, lesende** Bewertung ohne
+Host-Kostenbeleg oder Zustimmung, daher grundsätzlich gesperrt. Eine
+vertrauenswürdige Hostintegration muss `evaluate()` mit konkreter
+Provider-Evidenz vor Ausführung aufrufen. Für diese Integration sind
+Host-Proben getrennt erforderlich.
+
+Die vorhandene LiveCircle-`snapshot()`-Ausgabe enthält die
+`cost_consent`-Erinnerung; das lesende Operations Center meldet sie bei
+`REHYDRATE`. Nach Chatwechsel wird die geltende native Regel erneut
+aus dem aktuellen 666DEV-Quellstand geladen und nicht aus einer alten
+Handoff-Regel übernommen.
+
+**Abnahmegrenzen:** Dies ist ein echter nativer Guard und
+LiveCircle-/Operations-Center-Adapter, aber noch keine vollständige
+Interzeption aller externen Anbieter. Existierende projektspezifische
+Build-, Provider-, Windows- und Plugin-Einstiege sind vor produktiver
+Verwendung einzeln an das Gate anzuschließen und zu testen. Der Visual
+Daemon ist kein Hintergrunddienst. Kein zweiter Current-Pointer, keine
+Änderung der Projektzustände und keine Fremdaktivierung.
+
+### Executable Gate R07 — tatsächlicher Build-/Start-Einstieg
+
+`core.run_acceptance()` prüft vor `subprocess.run()` für `build`
+und `start` das native Cost Guard. Nur der exakt erkannte lokale
+Python-Standardbibliotheksaufruf `python -m py_compile <relative.py>`
+erhält eine native Nullkostenklassifizierung. Drittanbieter-Builds,
+Installationen, Netzwerkaufrufe und Startbefehle ohne verifizierten
+Nullkostenpfad liefern `WRITE_BLOCKED` mit `execution.state=cost_blocked`;
+sie starten **keinen** Prozess. Diese bewusst enge Regel kann bisher
+funktionierende andere Build- und Startbefehle sperren. Sie darf nicht durch
+pauschales `free_tier=true` umgangen werden.
+
+**Noch offen:** Die unabhängige Ausführung des Python-Testlaufs und
+Windows-Hostabnahme; der `test`-Ausführungspfad und andere externe
+Plugin-/Provider-Aufrufe sind nicht durch diesen konkreten
+`build/start`-Hook gesichert. Keine Vollschutzbehauptung; keine
+produktive Freigabe, bis diese Grenzen gezielt verifiziert sind.
