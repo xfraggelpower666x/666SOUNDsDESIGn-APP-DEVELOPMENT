@@ -99,3 +99,26 @@ def event_notice(event: str) -> dict:
         "guard": evaluate(event),
         "next_step": "Kostenklasse und nachweisbare Nullkostenquelle vor externem Aufruf prüfen.",
     }
+
+def local_command_cost_evidence(event: str, command: list[str] | tuple[str, ...]) -> dict:
+    """Only a narrowly audited stdlib syntax compile qualifies as zero-cost.
+
+    User-controlled tests, shell commands, npm, installers, deployers and other
+    subprocesses are UNKNOWN by default. This does not inspect code or execute it.
+    """
+    from pathlib import PurePosixPath, PureWindowsPath
+
+    parts = list(command) if isinstance(command, (list, tuple)) else []
+    if (event == "BUILD" and len(parts) == 4
+            and parts[0] in {"python", "python3", "python.exe"}
+            and parts[1:3] == ["-m", "py_compile"]
+            and isinstance(parts[3], str)
+            and parts[3].endswith(".py")):
+        target = parts[3]
+        posix, windows = PurePosixPath(target), PureWindowsPath(target)
+        if (not posix.is_absolute() and not windows.is_absolute()
+                and not windows.drive and ".." not in posix.parts
+                and "\\\\" not in target and posix.parts):
+            return {"verified_zero_cost": True,
+                    "source": "native-static-allowlist: local Python stdlib py_compile"}
+    return {}
