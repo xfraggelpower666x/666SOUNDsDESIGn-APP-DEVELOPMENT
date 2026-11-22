@@ -23,7 +23,7 @@ def forbidden_tracked_paths(paths: list[str]) -> list[str]:
     for original in paths:
         if not isinstance(original, str):
             continue
-        path = original.replace("\\", "/").lstrip("./").casefold()
+        path = original.replace("\\", "/").removeprefix("./").casefold()
         if (any(path.startswith(prefix.casefold()) for prefix in FORBIDDEN_PREFIXES)
                 or PurePosixPath(path).name in FORBIDDEN_FILES):
             blocked.append(original)
