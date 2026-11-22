@@ -18,6 +18,9 @@ SOURCE_BRANCH = "clic-migration-rev79-staging"
 SOURCE_PATH = "666CLIC_NATIVE_RUNTIME/outbox/666DEV/" + HANDOFF_ID + ".json"
 RECIPIENT_REPO = "xfraggelpower666x/666SOUNDsDESIGn-APP-DEVELOPMENT"
 RECIPIENT_BRANCH = "666DEV"
+# Independently confirmed published R06 source version (not a moving alias).
+PINNED_PUBLICATION_HEAD = "1055af17f05cd405c7aad028e27bb8a206af0e2e"
+PINNED_HANDOFF_BLOB = "f21d5734292ac262c76d136e9c3af642397f2066"
 REQUIRED_FINDINGS = ("DEV-01", "DEV-02", "DEV-03", "DEV-04")
 SHA = re.compile(r"^[a-f0-9]{40}$")
 
@@ -90,6 +93,11 @@ def inspect(envelope: object, *, source_head: str | None = None,
         # A source base is provenance, never the published handoff commit.
         return {**details, "status": "READBACK_PENDING",
                 "reason": "Source base is not independently verified publication HEAD."}
+    if source_head != PINNED_PUBLICATION_HEAD or source_blob != PINNED_HANDOFF_BLOB:
+        # A changed remote CLIC outbox must be freshly verified, never silently
+        # treated as the original R06 receipt's proven source.
+        return {**details, "status": "READBACK_PENDING",
+                "reason": "Published CLIC commit or blob changed; independent source revalidation required."}
     if recipient_current != target["head"]:
         return {**details, "status": "CONFLICT_QUARANTINE",
                 "reason": "Recipient productive Current differs from source observation."}
