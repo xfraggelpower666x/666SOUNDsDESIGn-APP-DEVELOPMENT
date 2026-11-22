@@ -165,8 +165,12 @@ class DevhubTests(unittest.TestCase):
                 local.write_text("local only", encoding="utf-8")
                 receipt = action("FREEZE")
                 self.assertNotIn(local.name, receipt["manifest_sha256"])
-                self.assertEqual("VERIFIZIERT", receipt["start_checks"][0]["status"])
-                self.assertIn("monorepo demo ready", receipt["start_checks"][0]["observed"])
+                # The ZERO-COST guard now blocks arbitrary start scripts until
+                # their concrete no-cost behavior is independently verified.
+                # FREEZE archive integrity survives; execution is intentionally held.
+                self.assertEqual("WRITE_BLOCKED", receipt["start_checks"][0]["status"])
+                self.assertEqual("cost_blocked", receipt["start_checks"][0]["execution"]["state"])
+                self.assertIn("native cost guard denies", receipt["start_checks"][0]["observed"])
 
     def test_manifest_evidence_aliases_are_read_without_promotion(self):
         with tempfile.TemporaryDirectory() as temporary:
