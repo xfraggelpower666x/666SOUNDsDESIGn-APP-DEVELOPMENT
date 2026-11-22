@@ -4,3 +4,8 @@ __pycache__/
 .pytest_cache/
 web/dashboard.json
 *.egg-info/
+
+# Block private plugin-source snapshots in this public repository
+.github/references/coding-profi-v087-source/
+.github/coding-control-plugin-snapshot/
+666dev-coding-control.zip
