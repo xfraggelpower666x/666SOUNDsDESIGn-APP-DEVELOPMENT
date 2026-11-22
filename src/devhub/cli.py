@@ -19,6 +19,7 @@ HELP = """666DEV commands (parsed only from this direct invocation):
   666DEV SYSTEMSTART | UPDATE | FUCK HORST
   666DEV DESKTOP-IMPACT [BASE]
   666DEV COST-POLICY | COST-CHECK <EVENT> <COST-CLASS> (read-only)
+  666DEV CLIC-HANDOFF INSPECT <handoff.json> (read-only; GitHub readback separate)
   666DEV REPO-MIND CHECK [RENAME-BASE] | INDEX | PR <RENAME-BASE> <TARGET-BRANCH>
   666DEV <PROJECT-ID> FUCK HORST [handoff.json]
   666DEV <PROJECT-ID> SYSTEMSTART|STATUS|WEITER|CODEFORGE|SUPERCODEFORGE|VISUAL|UPDATE|FREEZE
@@ -342,6 +343,14 @@ def execute(tokens: list[str]) -> str:
                               indent=2, ensure_ascii=False)
         except ValueError as exc:
             raise DevhubError(str(exc)) from exc
+    if normalized[1] == "CLIC-HANDOFF":
+        from .intelligence.clic_handoff import inspect
+        if len(normalized) != 4 or normalized[2] != "INSPECT":
+            raise DevhubError("CLIC-HANDOFF expects INSPECT and one JSON file.")
+        # A local file cannot prove live GitHub publication or blob by itself.
+        # Never accept caller-provided SHA strings here as remote proof.
+        data = _read_handoff(tokens[3])
+        return json.dumps(inspect(data), indent=2, ensure_ascii=False)
     if normalized[1] == "DESKTOP-IMPACT":
         from .desktop_impact import desktop_impact
 
