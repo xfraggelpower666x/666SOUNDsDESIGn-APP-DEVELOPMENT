@@ -17,6 +17,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Guard public repository against private plugin source re-exposure
+        env:
+          PYTHONPATH: src
+        run: python -m devhub.intelligence.publication_safety
       - name: Run unit tests
         env:
           PYTHONPATH: src
