@@ -59,6 +59,18 @@ class ClicHandoffTests(unittest.TestCase):
                          inspect(envelope(), source_head=BASE, source_blob=BLOB,
                                  recipient_current=DEV, recipient_head=CANDIDATE)["status"])
 
+    def test_other_valid_source_sha_cannot_claim_original_receipt(self):
+        result = inspect(envelope(), source_head="c" * 40, source_blob=BLOB,
+                         recipient_current=DEV, recipient_head=CANDIDATE)
+        self.assertEqual("READBACK_PENDING", result["status"])
+        self.assertIsNone(result["receipt_id"])
+
+    def test_unverified_source_blob_cannot_claim_original_receipt(self):
+        result = inspect(envelope(), source_head=SRC, source_blob="d" * 40,
+                         recipient_current=DEV, recipient_head=CANDIDATE)
+        self.assertEqual("READBACK_PENDING", result["status"])
+        self.assertIsNone(result["receipt_id"])
+
     def test_production_current_mismatch_quarantined(self):
         self.assertEqual("CONFLICT_QUARANTINE",
                          inspect(envelope(), source_head=SRC, source_blob=BLOB,

@@ -17,6 +17,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Guard public repository against private plugin source re-exposure
+        env:
+          PYTHONPATH: src
+        run: python -m devhub.intelligence.publication_safety
       - name: Run unit tests
         env:
           PYTHONPATH: src
@@ -42,6 +46,7 @@ jobs:
           python -m devhub.cli 666DEV REPO-MIND INDEX
 
       - name: Build revision-bound recovery artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/666DEV'
         shell: bash
         run: |
           set -euo pipefail
@@ -65,6 +70,7 @@ jobs:
           (root / "manifest.json").write_text(json.dumps(result, indent=2) + "\n")
           PYREC
       - name: Publish revision-bound recovery artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/666DEV'
         uses: actions/upload-artifact@v4
         with:
           name: 666DEV-recovery-${{ github.sha }}

@@ -83,3 +83,27 @@ starten. Eine Empfehlung mit `CONFLICT_QUARANTINE` oder
 `READBACK_PENDING` bleibt auf Quellklärung begrenzt.
 Die Operations-Ansicht benötigt keine weiteren Python-Abhängigkeiten.
 Native Windows-Akzeptanz und Plugin-Host-Parität sind separat zu prüfen.
+
+## R08 – Windows-Host-Vorabnahme (lokal und ohne Zusatzkosten)
+
+Nach Checkout des **exakt auf GitHub verifizierten** 666DEV-Sicherheitscommits
+die komplette 40-stellige SHA als Argument übergeben:
+
+```cmd
+windows-app\WINDOWS_HOST_PRECHECK_R08.cmd <VERIFIZIERTE_40_STELLIGE_COMMIT_SHA>
+```
+
+Der Batch-Einstieg arbeitet ohne Downloads, Installation, APIs oder Browser.
+Die Python-Diagnose kontrolliert Windows, Git-Revision, Branchidentität und den
+vorhandenen `START_666DEV_WINDOWS.cmd --check` aus einem Arbeitsverzeichnis
+mit Leerzeichen. Ein JSON-Nachweis wird nur lokal unter
+`.work/host-acceptance/WINDOWS_PRECHECK_<SHA12>.json` erzeugt; er enthält
+keine Tokens. `PARTIAL` ist bei bestandener Vorabprüfung **erwartet**, weil
+die tatsächliche GUI-, Audiogeräte- und Plugin-Host-Bedienung durch diesen
+Precheck nicht bestätigt werden kann.
+
+Nach dieser Vorabprüfung die Windows-Control-GUI manuell öffnen und Import,
+LiveCircle, sieben Facetten, Operations Center, CSRF-/Loopback-Schutz sowie
+die tatsächlichen Plugin-Host-Aufrufe gegen die exakte Repo-Revision
+abnehmen. Host-Ergebnisse getrennt dokumentieren und nicht mit Linux-CI
+gleichsetzen. Der Precheck aktualisiert niemals Current oder Pointer.
