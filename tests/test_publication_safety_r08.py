@@ -10,7 +10,7 @@ class PublicationSafetyTests(unittest.TestCase):
             ".github/coding-control-plugin-snapshot/plugin.json",
             "safe/docs/overview.md",
         ]
-        self.assertEqual(values[:2], forbidden_tracked_paths(values))
+        self.assertEqual(sorted(values[:2]), forbidden_tracked_paths(values))
 
     def test_windows_separators_and_case_cannot_bypass(self):
         values = [r".github\CODING-CONTROL-PLUGIN-SNAPSHOT\plugin.json"]
