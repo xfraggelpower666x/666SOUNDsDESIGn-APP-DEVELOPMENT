@@ -19,6 +19,7 @@ HELP = """666DEV commands (parsed only from this direct invocation):
   666DEV SYSTEMSTART | UPDATE | FUCK HORST
   666DEV DESKTOP-IMPACT [BASE]
   666DEV COST-POLICY | COST-CHECK <EVENT> <COST-CLASS> (read-only)
+  666DEV CODEFORGE-TEAM STATUS | PLAN <proposal.json> (read-only)
   666DEV CLIC-HANDOFF INSPECT <handoff.json> (read-only; GitHub readback separate)
   666DEV REPO-MIND CHECK [RENAME-BASE] | INDEX | PR <RENAME-BASE> <TARGET-BRANCH>
   666DEV <PROJECT-ID> FUCK HORST [handoff.json]
@@ -343,6 +344,20 @@ def execute(tokens: list[str]) -> str:
                               indent=2, ensure_ascii=False)
         except ValueError as exc:
             raise DevhubError(str(exc)) from exc
+    if normalized[1] == "CODEFORGE-TEAM":
+        from .intelligence.codeforge_cooperation import catalog, plan
+        if len(normalized) == 3 and normalized[2] == "STATUS":
+            return json.dumps(catalog(), indent=2, ensure_ascii=False)
+        if len(normalized) == 4 and normalized[2] == "PLAN":
+            proposal = _read_handoff(tokens[3])
+            # Reuse the native project LiveCircle, not a peer-provided authority.
+            if not isinstance(proposal, dict) or not isinstance(proposal.get("project_id"), str):
+                raise DevhubError("CODEFORGE-TEAM requires a project-bound proposal.")
+            from .livecircle import snapshot
+            project_profile(proposal["project_id"])
+            native = snapshot(proposal["project_id"])
+            return json.dumps(plan(proposal, native=native), indent=2, ensure_ascii=False)
+        raise DevhubError("Use 666DEV CODEFORGE-TEAM STATUS or PLAN <proposal.json>.")
     if normalized[1] == "CLIC-HANDOFF":
         from .intelligence.clic_handoff import inspect
         if len(normalized) != 4 or normalized[2] != "INSPECT":
