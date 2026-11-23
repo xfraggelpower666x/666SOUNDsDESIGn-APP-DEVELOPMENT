@@ -125,7 +125,10 @@ def plan(request: object, *, native: Mapping | None = None) -> dict:
                     "reason": "Dependency cycle prevents parallel planning."}
         wave, touched = [], set()
         for item in candidates:
-            if touched.intersection(item["scope"]):
+            # A directory and a descendant overlap even without equal strings.
+            overlapping = any(a == b or a.startswith(b + "/") or b.startswith(a + "/")
+                              for a in item["scope"] for b in touched)
+            if overlapping:
                 continue
             touched.update(item["scope"])
             wave.append(item)
