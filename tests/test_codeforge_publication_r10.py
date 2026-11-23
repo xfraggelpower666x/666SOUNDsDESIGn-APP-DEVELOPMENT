@@ -112,7 +112,7 @@ class DraftPublicationTests(unittest.TestCase):
         def git(root, *args):
             calls.append(args)
             if args == ("rev-parse", "HEAD"):
-                return NEW if root == self.worktree and ("commit",) in calls else HEAD
+                return NEW if root == self.worktree and any(c[0] == "commit" for c in calls) else HEAD
             if args == ("remote", "get-url", "--push", "origin"):
                 return "https://github.com/xfraggelpower666x/666SOUNDsDESIGn-APP-DEVELOPMENT.git"
             if args[:2] == ("ls-remote", "--refs"):
