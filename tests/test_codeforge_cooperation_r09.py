@@ -55,6 +55,14 @@ class CodeForgeTeamTests(unittest.TestCase):
         self.assertEqual("PLAN_READY_NOT_DISPATCHED", result["plan_status"])
         self.assertEqual([["a1"], ["b1", "c1"]], [[x["id"] for x in w] for w in result["waves"]])
 
+    def test_nested_paths_must_not_run_in_same_wave(self):
+        result = plan(request(item("module", "666DEV", ["src/module"]),
+                              item("file", "LYVRA_CODING_PROFI", ["src/module/file.py"])),
+                      native=native())
+        self.assertEqual("PLAN_READY_NOT_DISPATCHED", result["plan_status"])
+        self.assertEqual(2, len(result["waves"]))
+        self.assertFalse(result["executed"])
+
     def test_unknown_project_authority_is_not_inferred(self):
         result = plan(request(item("a1", "666DEV", ["src/x.py"])), native=None)
         self.assertEqual("READBACK_PENDING", result["plan_status"])
