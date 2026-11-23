@@ -32,8 +32,9 @@ def _safe_candidate_path(project_dir: Path, relative: str) -> Path:
             or relative.startswith("/") or ".." in Path(relative).parts):
         _fail("candidate must use a project-relative safe path.")
     folder = state_file(project_dir, "patch-candidates")
-    path = (folder / relative).resolve()
-    if (not path.is_relative_to(folder) or not path.is_file() or path.is_symlink()
+    unresolved = folder / relative
+    path = unresolved.resolve()
+    if (unresolved.is_symlink() or not path.is_relative_to(folder) or not path.is_file() or path.is_symlink()
             or path.stat().st_size > 262144):
         _fail("candidate missing, symlinked, oversized or outside patch-candidates.")
     return path
@@ -99,6 +100,14 @@ def execute_native(
         _fail("patch paths exceed the explicitly reviewed workstream scope.")
     for path in paths:
         allowed_path(profile, source, path)
+
+    planned_receipt_id = hashlib.sha256(
+        (project_id + ":" + workstream_id + ":" + revision + ":" + digest).encode()
+    ).hexdigest()[:24]
+    receipt_preflight = (WORK / "codeforge-receipts" / project_id /
+                         (planned_receipt_id + ".json")).resolve()
+    if not receipt_preflight.is_relative_to(WORK.resolve()) or receipt_preflight.exists():
+        _fail("receipt already exists or path unsafe; replay not authorized.")
 
     # apply_candidate uses existing native, detached, ignored worktree and its
     # profile-scoped write checks. Never patches productive source or Current.
