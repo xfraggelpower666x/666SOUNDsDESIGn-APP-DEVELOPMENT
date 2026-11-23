@@ -87,6 +87,19 @@ class CodeForgeTeamTests(unittest.TestCase):
         self.assertEqual("CONFLICT_QUARANTINE", unknown["plan_status"])
         self.assertEqual("CONFLICT_QUARANTINE", cycle["plan_status"])
 
+    def test_operations_center_keeps_exactly_seven_native_facets(self):
+        from devhub.intelligence.operations import build_operations_center
+        dashboard = build_operations_center(native())
+        self.assertEqual(7, len(dashboard["facets"]))
+        self.assertEqual("LYVRA_CODING_PROFI", dashboard["codeforge_team"]["method_lead"])
+        self.assertFalse(dashboard["codeforge_team"]["dispatch_enabled"])
+
+    def test_nonstring_peer_is_quarantined_not_crash(self):
+        broken = item("x", "666CLIC", ["docs/a.md"])
+        broken["peer"] = ["LYVRA"]
+        result = plan(request(broken), native=native())
+        self.assertEqual("CONFLICT_QUARANTINE", result["plan_status"])
+
     def test_global_cli_status_is_read_only(self):
         data = json.loads(execute(["666DEV", "CODEFORGE-TEAM", "STATUS"]))
         self.assertEqual("666dev-codeforge-team/v1", data["schema"])
