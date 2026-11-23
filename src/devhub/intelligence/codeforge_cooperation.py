@@ -72,7 +72,7 @@ def plan(request: object, *, native: Mapping | None = None) -> dict:
         or not isinstance(native.get("hub_commit"), str)
         or not SHA.fullmatch(native["hub_commit"])
         or not isinstance(native.get("profile_sha256"), str)
-        or len(native["profile_sha256"]) != 64
+        or not re.fullmatch(r"[0-9a-f]{64}", native["profile_sha256"])
         or native.get("status") not in ("VERIFIZIERT", "ABGELEITET", "PARTIAL")):
         return {**result, "reason": "Verified 666DEV project LiveCircle required."}
     revision = native["source_commit"]
@@ -86,12 +86,12 @@ def plan(request: object, *, native: Mapping | None = None) -> dict:
         sid, peer = item["id"], item["peer"]
         paths, parents = item["scope"], item["depends_on"]
         if (not isinstance(sid, str) or not re.fullmatch(r"[a-zA-Z][a-zA-Z0-9_-]{0,63}", sid)
-            or sid in identifiers or peer not in PEER_IDS
+            or sid in identifiers or not isinstance(peer, str) or peer not in PEER_IDS
             or not isinstance(item["capability"], str) or not item["capability"].strip()
             or len(item["capability"]) > 128
             or not isinstance(item["source_commit"], str)
             or not SHA.fullmatch(item["source_commit"])
-            or item["evidence_status"] not in SAFE_STATES
+            or not isinstance(item["evidence_status"], str) or item["evidence_status"] not in SAFE_STATES
             or not isinstance(paths, list) or not paths or len(paths) > 40
             or not isinstance(parents, list) or len(parents) > 24
             or any(not isinstance(p, str) or not re.fullmatch(
