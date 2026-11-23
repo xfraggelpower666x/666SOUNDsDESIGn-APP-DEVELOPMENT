@@ -7,6 +7,7 @@ Only independently registered peers and exact user-supplied SHAs are eligible.
 from __future__ import annotations
 
 import base64
+import binascii
 import hashlib
 import json
 import re
@@ -121,7 +122,7 @@ def inspect(request: object, *, fetch=None) -> dict:
         if len(raw) != found["size"] or len(raw) > MAX_FILE:
             return _failed("CONFLICT_QUARANTINE", "File size does not match metadata.", peer=peer)
         measured_blob = hashlib.sha1(b"blob " + str(len(raw)).encode("ascii") +
-                                     b"\\0" + raw).hexdigest()
+                                     bytes([0]) + raw).hexdigest()
         if measured_blob != blob:
             return _failed("CONFLICT_QUARANTINE", "Bytes disagree with Git blob SHA.", peer=peer)
         second = getter(branch_url)
@@ -129,7 +130,7 @@ def inspect(request: object, *, fetch=None) -> dict:
                 or second["commit"].get("sha") != head):
             return _failed("READBACK_PENDING", "Branch moved during GitHub peer readback.", peer=peer)
     except (ValueError, TypeError, KeyError, UnicodeError, HTTPError, URLError,
-            OSError, json.JSONDecodeError) as exc:
+            OSError, binascii.Error) as exc:
         return _failed("READBACK_PENDING",
                        "GitHub source readback failed: " + type(exc).__name__, peer=peer)
     return {
