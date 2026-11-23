@@ -8,6 +8,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from .cost_guard import event_notice
+from .codeforge_cooperation import catalog as codeforge_team_catalog
 
 SCHEMA = "666dev-operations-center/v1"
 FACET_SCHEMA = "666dev-facet-livecircle/v1"
@@ -108,6 +109,7 @@ def build_operations_center(native: Mapping[str, Any] | None = None,
         "navigation": [{"id": fid, "title": title, "description": detail}
                        for fid, title, detail in FACETS],
         "cost_consent": event_notice("REHYDRATE"),
+        "codeforge_team": codeforge_team_catalog(),  # existing seven-facet read-only projection
         "visual_daemon": {
             "state": "HOLD" if value in HOLDS else "ADVISORY",
             "observed_status": value,
