@@ -20,6 +20,7 @@ HELP = """666DEV commands (parsed only from this direct invocation):
   666DEV DESKTOP-IMPACT [BASE]
   666DEV COST-POLICY | COST-CHECK <EVENT> <COST-CLASS> (read-only)
   666DEV CODEFORGE-TEAM STATUS | PLAN <proposal.json> (read-only)\n  666DEV CODEFORGE-TEAM EXECUTE <proposal.json> <stream-id> <candidate-relative> <sha256> (isolated local only)
+  666DEV CODEFORGE-TEAM DRAFT-PR <project-id> <receipt-id> <base-commit> <target-branch> CONFIRM_DRAFT_PR
   666DEV CLIC-HANDOFF INSPECT <handoff.json> (read-only; GitHub readback separate)
   666DEV REPO-MIND CHECK [RENAME-BASE] | INDEX | PR <RENAME-BASE> <TARGET-BRANCH>
   666DEV <PROJECT-ID> FUCK HORST [handoff.json]
@@ -369,6 +370,13 @@ def execute(tokens: list[str]) -> str:
                 proposal, workstream_id=tokens[4],
                 candidate_relative=tokens[5],
                 expected_candidate_sha256=tokens[6], native=native,
+            ), indent=2, ensure_ascii=False)
+        if len(normalized) == 8 and normalized[2] == "DRAFT-PR":
+            from .intelligence.codeforge_publication import publish_draft
+            return json.dumps(publish_draft(
+                project_id=tokens[3], receipt_id=tokens[4],
+                expected_head=tokens[5], target_branch=tokens[6],
+                confirmation=tokens[7],
             ), indent=2, ensure_ascii=False)
         raise DevhubError("Use 666DEV CODEFORGE-TEAM STATUS, PLAN <proposal.json> or EXECUTE <proposal.json> <stream-id> <candidate-relative> <sha256>.")
     if normalized[1] == "CLIC-HANDOFF":
