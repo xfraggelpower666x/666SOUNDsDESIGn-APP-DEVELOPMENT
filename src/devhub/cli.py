@@ -19,7 +19,8 @@ HELP = """666DEV commands (parsed only from this direct invocation):
   666DEV SYSTEMSTART | UPDATE | FUCK HORST
   666DEV DESKTOP-IMPACT [BASE]
   666DEV COST-POLICY | COST-CHECK <EVENT> <COST-CLASS> (read-only)
-  666DEV CODEFORGE-TEAM STATUS | PLAN <proposal.json> (read-only)\n  666DEV CODEFORGE-TEAM EXECUTE <proposal.json> <stream-id> <candidate-relative> <sha256> (isolated local only)
+  666DEV CODEFORGE-TEAM STATUS | PLAN <proposal.json> (read-only)
+  666DEV CODEFORGE-TEAM PEER-READBACK <peer-request.json> (public GitHub GET only)\n  666DEV CODEFORGE-TEAM EXECUTE <proposal.json> <stream-id> <candidate-relative> <sha256> (isolated local only)
   666DEV CODEFORGE-TEAM DRAFT-PR <project-id> <receipt-id> <base-commit> <target-branch> CONFIRM_DRAFT_PR
   666DEV CLIC-HANDOFF INSPECT <handoff.json> (read-only; GitHub readback separate)
   666DEV REPO-MIND CHECK [RENAME-BASE] | INDEX | PR <RENAME-BASE> <TARGET-BRANCH>
@@ -371,6 +372,10 @@ def execute(tokens: list[str]) -> str:
                 candidate_relative=tokens[5],
                 expected_candidate_sha256=tokens[6], native=native,
             ), indent=2, ensure_ascii=False)
+        if len(normalized) == 4 and normalized[2] == "PEER-READBACK":
+            from .intelligence.codeforge_peer_readback import inspect
+            return json.dumps(inspect(_read_handoff(tokens[3])),
+                              indent=2, ensure_ascii=False)
         if len(normalized) == 8 and normalized[2] == "DRAFT-PR":
             from .intelligence.codeforge_publication import publish_draft
             return json.dumps(publish_draft(
