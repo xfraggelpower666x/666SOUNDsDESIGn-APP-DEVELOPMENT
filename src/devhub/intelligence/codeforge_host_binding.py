@@ -6,7 +6,7 @@ Only exact authorized read-only handles may be supplied by the live host.
 from __future__ import annotations
 
 import base64
-import hashlib
+import json
 import re
 from collections.abc import Callable, Mapping
 
@@ -36,6 +36,11 @@ def _unwrap(value: object) -> Mapping:
     result = value.get("result", value)
     if not isinstance(result, Mapping):
         raise ValueError("Provider result missing")
+    if isinstance(result.get("content"), str) and "sha" not in result:
+        parsed = json.loads(result["content"])
+        if not isinstance(parsed, Mapping):
+            raise ValueError("GitHub API content must be an object")
+        return parsed
     return result
 
 
@@ -85,7 +90,7 @@ def verify_with_host(request: object, *, branch_fetch: Callable | None = None,
             calls[0] += 1
             if calls[0] > 2:
                 raise ValueError("Excess branch fetch")
-            payload = _unwrap(branch_fetch(repository_full_name=repo, branch=branch))
+            payload = _unwrap(branch_fetch(url=url))
             revision = payload.get("commit")
             if not isinstance(revision, Mapping):
                 raise ValueError("Missing branch commit")
