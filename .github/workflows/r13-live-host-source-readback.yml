@@ -1,8 +1,7 @@
 name: 666DEV R13 Live R12 Host Source Acceptance
+# Explicit-only live verification: avoids repeated unauthenticated GitHub GETs
+# on every source/docs commit and avoids uncontrolled external API retries.
 on:
-  push:
-    branches:
-      - feature/666dev-r13-live-provider-execution-20261125
   workflow_dispatch:
 permissions:
   contents: read
