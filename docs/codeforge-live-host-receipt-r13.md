@@ -59,3 +59,23 @@ exakten GitHub-Handles in den laufenden Originaladapter injizieren kann,
 den Native-/ALIVE-Host-Receipt unabhängig erzeugen und zurücklesen.
 Bis dahin `HOST_PLUGIN_READBACK_PENDING` und kein automatischer
 Cross-System-Write oder produktiver Merge.
+
+## Folgeprüfung und Wiederholungs-Gate
+
+Eine zusätzliche automatisierte Live-Wiederholung in Run
+`45512015587` auf Commit `c610da76d59383360021faf5c6d512d11200c416`
+endete `READBACK_PENDING`: beobachtet wurden **ein Branch-GET und null
+Datei-GETs**. Der Adapter hat korrekt keine Quell- oder Host-Abnahme
+behauptet. Die Ursache des unvollständigen Branch-Readbacks ist
+nicht unabhängig geklärt; ein GitHub-API-Limit ist lediglich eine
+Hypothese, keine bestätigte Ursache.
+
+Darum wurde das separate Live-Probe-Workflow auf
+`workflow_dispatch` (ausdrückliche Auslösung) umgestellt.
+Normale Source-/PR-Regressionen laufen weiterhin; die externe
+API wird nicht bei jeder Entwicklungsdatei erneut kontaktiert.
+GitHub kann für `workflow_dispatch` verlangen, dass die Workflow-Datei
+auf dem Default-Branch liegt. Bis dahin wird kein manuell abrufbarer
+Dispatcher behauptet. Der **erste erfolgreiche revisionsgebundene
+Live-Receipt bleibt als historischer, nachweisbarer Lauf erhalten**,
+ist aber keine Abnahme jeder folgenden HEAD-Revision.
