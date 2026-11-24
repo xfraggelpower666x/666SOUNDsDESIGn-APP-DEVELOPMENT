@@ -110,6 +110,15 @@ def build_operations_center(native: Mapping[str, Any] | None = None,
                        for fid, title, detail in FACETS],
         "cost_consent": event_notice("REHYDRATE"),
         "codeforge_team": codeforge_team_catalog(),  # existing seven-facet read-only projection
+        "codeforge_host_binding": {
+            "schema": "666dev-peer-host-binding/v1",
+            "mode": "INJECTED_READ_ONLY_GITHUB",
+            "provider_handles_required": ["mcp__GitHub__fetch", "mcp__GitHub__fetch_file"],
+            "provider_host_verified": False,
+            "plugin_host_verified": False,
+            "foreign_write_authorized": False,
+            "status": "READBACK_PENDING",
+        },
         "visual_daemon": {
             "state": "HOLD" if value in HOLDS else "ADVISORY",
             "observed_status": value,
