@@ -1,0 +1,26 @@
+name: 666DEV R13 Live R12 Host Source Acceptance
+on:
+  push:
+    branches:
+      - feature/666dev-r13-live-provider-execution-20261125
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  live-peer-source-readback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      PYTHONPATH: src
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Confirm Python host and compile original R12 source
+        run: |
+          python --version
+          python -m py_compile src/devhub/intelligence/codeforge_host_binding.py
+          python -m py_compile scripts/verify_r12_live_host_r13.py
+      - name: R12 exact module executed with public real REST read-only bindings
+        run: python scripts/verify_r12_live_host_r13.py
