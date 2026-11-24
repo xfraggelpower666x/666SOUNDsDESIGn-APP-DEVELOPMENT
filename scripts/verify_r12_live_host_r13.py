@@ -73,7 +73,7 @@ def run_live() -> dict:
                 payload.get("encoding") != "base64" or
                 payload.get("sha") != EXPECTED_BLOB):
             raise ValueError("Unexpected GitHub file metadata")
-        raw = base64.b64decode(payload["content"], validate=True)
+        raw = base64.b64decode("".join(payload["content"].split()), validate=True)
         if len(raw) != payload.get("size"):
             raise ValueError("GitHub file size mismatch")
         # Exact R12 transport expects UTF-8 text, not binary.
