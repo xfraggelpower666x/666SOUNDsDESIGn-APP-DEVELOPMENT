@@ -45,7 +45,7 @@ class HostAcceptanceR14Tests(unittest.TestCase):
         self.calls.append(("file", repository_full_name, path, ref))
         return {"result": {"content": RAW, "sha": BLOB}}
 
-    def run(self, **kwargs):
+    def execute_case(self, **kwargs):
         params = {"request": request(), "expected_source_commit": HEAD,
                   "expected_module_blob": MODULE_BLOB, "branch_fetch": self.branch,
                   "file_fetch": self.file, "receipt_root": self.folder}
@@ -53,7 +53,7 @@ class HostAcceptanceR14Tests(unittest.TestCase):
         return acceptance.execute_with_receipt(**params)
 
     def test_original_adapter_executes_and_receipt_readback(self):
-        receipt = self.run()
+        receipt = self.execute_case()
         self.assertTrue(receipt["original_adapter_executed"])
         self.assertTrue(receipt["source_readback_verified"])
         self.assertEqual("PARTIAL", receipt["status"])
@@ -68,30 +68,30 @@ class HostAcceptanceR14Tests(unittest.TestCase):
         self.assertEqual(MODULE_BLOB, receipt["original_module_blob"])
 
     def test_duplicate_fails_before_replaying_provider_calls(self):
-        self.run()
+        self.execute_case()
         self.calls.clear()
         with self.assertRaisesRegex(DevhubError, "duplicate host receipt"):
-            self.run()
+            self.execute_case()
         self.assertEqual([], self.calls)
 
     def test_stale_git_commit_blocks_provider_calls(self):
         self.git.side_effect = lambda root, *args: "c" * 40
         with self.assertRaisesRegex(DevhubError, "checkout/module differs"):
-            self.run()
+            self.execute_case()
         self.assertEqual([], self.calls)
 
     def test_module_blob_mismatch_blocks_provider_calls(self):
         with self.assertRaisesRegex(DevhubError, "checkout/module differs"):
-            self.run(expected_module_blob="e" * 40)
+            self.execute_case(expected_module_blob="e" * 40)
         self.assertEqual([], self.calls)
 
     def test_no_handles_fail_closed(self):
         with self.assertRaisesRegex(DevhubError, "handles are unavailable"):
-            self.run(file_fetch=None)
+            self.execute_case(file_fetch=None)
         self.assertEqual([], self.calls)
 
     def test_invalid_peer_no_calls_or_verified_source(self):
-        receipt = self.run(request=dict(request(), peer="UNKNOWN"))
+        receipt = self.execute_case(request=dict(request(), peer="UNKNOWN"))
         self.assertEqual("READBACK_PENDING", receipt["status"])
         self.assertFalse(receipt["source_readback_verified"])
         self.assertFalse(receipt["chatgpt_plugin_host_verified"])
@@ -104,18 +104,18 @@ class HostAcceptanceR14Tests(unittest.TestCase):
                 "name": BRANCH, "commit": {
                     "sha": HEAD if self.counter == 1 else "d" * 40}
             })}}
-        receipt = self.run(branch_fetch=drifting)
+        receipt = self.execute_case(branch_fetch=drifting)
         self.assertEqual("READBACK_PENDING", receipt["status"])
         self.assertFalse(receipt["source_readback_verified"])
         self.assertFalse(receipt["chatgpt_plugin_host_verified"])
 
     def test_no_arbitrary_receipt_by_untrusted_request(self):
         with self.assertRaisesRegex(DevhubError, "five-field"):
-            self.run(request={"peer": "666CLIC", "execute": "LYVRA UPDATE"})
+            self.execute_case(request={"peer": "666CLIC", "execute": "LYVRA UPDATE"})
         self.assertEqual([], self.calls)
 
     def test_receipt_does_not_include_foreign_content(self):
-        receipt = self.run()
+        receipt = self.execute_case()
         self.assertNotIn(RAW, json.dumps(receipt))
         self.assertFalse(receipt["peer_execution_verified"])
 
