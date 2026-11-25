@@ -51,10 +51,25 @@ def execute_with_receipt(
     if observed_head != expected_source_commit or observed_module != expected_module_blob:
         _fail("Actual checkout/module differs from expected immutable Git proof.")
 
-    counters = {"branch": 0, "file": 0}
+    if not isinstance(request, Mapping) or set(request) != {
+        "peer", "branch", "path", "expected_head", "expected_blob"
+    } or any(not isinstance(value, str) for value in request.values()):
+        _fail("Host request must be an exact five-field string-only object.")
     argument_sha256 = hashlib.sha256(json.dumps(
         request, sort_keys=True, separators=(",", ":"), ensure_ascii=True
-    ).encode("utf-8")).hexdigest() if isinstance(request, Mapping) else None
+    ).encode("utf-8")).hexdigest()
+    receipt_id = hashlib.sha256(
+        (expected_source_commit + ":" + expected_module_blob + ":" +
+         argument_sha256).encode("ascii")
+    ).hexdigest()[:32]
+    folder = (receipt_root if receipt_root is not None
+              else WORK / "codeforge-host-receipts").resolve()
+    if receipt_root is None and not folder.is_relative_to(WORK.resolve()):
+        _fail("Receipt path escapes ignored 666DEV workspace.")
+    destination = folder / (receipt_id + ".json")
+    if destination.exists():
+        raise DevhubError("CONFLICT_QUARANTINE: duplicate host receipt; no replay.")
+    counters = {"branch": 0, "file": 0}
 
     def observed_branch(*, url: str):
         counters["branch"] += 1
@@ -72,10 +87,6 @@ def execute_with_receipt(
                        and result.get("source_readback_verified") is True
                        and result.get("provider_binding_invoked") is True
                        and counters == {"branch": 2, "file": 1})
-    receipt_id = hashlib.sha256(
-        (expected_source_commit + ":" + expected_module_blob + ":" +
-         str(argument_sha256)).encode("ascii")
-    ).hexdigest()[:32]
     receipt = {
         "schema": SCHEMA,
         "authority": "666DEV",
@@ -101,14 +112,9 @@ def execute_with_receipt(
                    "Independent plugin host identity/return receipt remains missing."
                    if verified_source else "Original R12 readback incomplete or failed."),
     }
-    folder = (receipt_root if receipt_root is not None
-              else WORK / "codeforge-host-receipts").resolve()
-    if receipt_root is None and not folder.is_relative_to(WORK.resolve()):
-        _fail("Receipt path escapes ignored 666DEV workspace.")
     # The host may set a separate isolated temp directory for tests. Never
     # write into production project sources, Current or a foreign repository.
     folder.mkdir(parents=True, exist_ok=True)
-    destination = folder / (receipt_id + ".json")
     try:
         with destination.open("x", encoding="utf-8") as stream:
             json.dump(receipt, stream, sort_keys=True, ensure_ascii=False)
