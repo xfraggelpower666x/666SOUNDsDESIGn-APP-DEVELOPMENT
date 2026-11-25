@@ -110,6 +110,15 @@ def build_operations_center(native: Mapping[str, Any] | None = None,
                        for fid, title, detail in FACETS],
         "cost_consent": event_notice("REHYDRATE"),
         "codeforge_team": codeforge_team_catalog(),  # existing seven-facet read-only projection
+        "codeforge_host_acceptance": {
+            "schema": "666dev-codeforge-host-receipt/v1",
+            "source_module": "src/devhub/intelligence/codeforge_host_binding.py",
+            "execution_contract": "INJECTED_GITHUB_READ_ONLY_HANDLES",
+            "local_receipt": "APPEND_ONLY_AND_READBACK",
+            "host_identity_attestation": "OFFEN",
+            "chatgpt_plugin_host_verified": False,
+            "status": "READBACK_PENDING",
+        },
         "codeforge_host_binding": {
             "schema": "666dev-peer-host-binding/v1",
             "mode": "INJECTED_READ_ONLY_GITHUB",
