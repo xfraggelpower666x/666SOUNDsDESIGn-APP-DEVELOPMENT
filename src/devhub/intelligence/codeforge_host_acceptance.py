@@ -136,7 +136,7 @@ def execute_with_receipt(
         try:
             with destination.open("x", encoding="utf-8") as stream:
                 json.dump(receipt, stream, sort_keys=True, ensure_ascii=False)
-                stream.write("\\n")
+                stream.write("\n")
         except FileExistsError as exc:
             raise DevhubError("CONFLICT_QUARANTINE: duplicate receipt; no overwrite.") from exc
         if read_json(destination) != receipt:
