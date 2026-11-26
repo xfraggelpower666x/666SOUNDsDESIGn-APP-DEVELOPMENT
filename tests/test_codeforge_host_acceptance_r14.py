@@ -92,7 +92,7 @@ class HostAcceptanceR14Tests(unittest.TestCase):
 
     def test_invalid_peer_no_calls_or_verified_source(self):
         receipt = self.execute_case(request=dict(request(), peer="UNKNOWN"))
-        self.assertEqual("READBACK_PENDING", receipt["status"])
+        self.assertEqual("CONFLICT_QUARANTINE", receipt["status"])
         self.assertFalse(receipt["source_readback_verified"])
         self.assertFalse(receipt["chatgpt_plugin_host_verified"])
         self.assertEqual([], self.calls)
